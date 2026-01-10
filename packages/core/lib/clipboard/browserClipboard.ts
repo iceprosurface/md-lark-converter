@@ -1,4 +1,10 @@
-export async function writeToClipboard(html, jsonData) {
+/// <reference lib="dom" />
+
+export interface ClipboardResult {
+  [mimeType: string]: string;
+}
+
+export async function writeToClipboard(html: string, jsonData: any): Promise<boolean> {
   try {
     const plainText = extractPlainTextFromData(jsonData);
 
@@ -11,11 +17,11 @@ export async function writeToClipboard(html, jsonData) {
     return true;
   } catch (error) {
     console.error('Failed to write to clipboard:', error);
-    throw new Error(`写入剪贴板失败: ${error.message}`);
+    throw new Error(`写入剪贴板失败: ${(error as Error).message}`);
   }
 }
 
-function extractPlainTextFromData(data) {
+function extractPlainTextFromData(data: any): string {
   let text = '';
   for (const recordId of data.recordIds) {
     const record = data.recordMap[recordId];
@@ -44,7 +50,13 @@ function extractPlainTextFromData(data) {
   return text.trim();
 }
 
-function getTextContent(textData) {
+interface TextData {
+  initialAttributedTexts?: {
+    text: Record<string, string>;
+  };
+}
+
+function getTextContent(textData: TextData): string {
   if (!textData || !textData.initialAttributedTexts) {
     return '';
   }
@@ -52,10 +64,10 @@ function getTextContent(textData) {
   return Object.values(texts).join('');
 }
 
-export async function readClipboard() {
+export async function readClipboard(): Promise<ClipboardResult> {
   try {
     const clipboardItems = await navigator.clipboard.read();
-    const results = {};
+    const results: ClipboardResult = {};
 
     for (const item of clipboardItems) {
       for (const type of item.types) {
@@ -70,6 +82,6 @@ export async function readClipboard() {
     return results;
   } catch (error) {
     console.error('Failed to read clipboard:', error);
-    throw new Error(`读取剪贴板失败: ${error.message}`);
+    throw new Error(`读取剪贴板失败: ${(error as Error).message}`);
   }
 }
