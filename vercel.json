@@ -1,19 +1,5 @@
-# Vercel Deployment Configuration
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "packages/web-app/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/packages/web-app/$1"
-    }
-  ]
+  "buildCommand": "pnpm --filter @md-lark-converter/web-app build",
+  "outputDirectory": "packages/web-app/dist",
+  "framework": "vite"
 }
