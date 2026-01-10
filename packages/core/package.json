@@ -1,0 +1,28 @@
+{
+  "name": "@md-lark-converter/core",
+  "version": "1.0.0",
+  "description": "Core conversion logic for Markdown to Lark",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "test": "node test.js",
+    "lint": "eslint ."
+  },
+  "keywords": [
+    "markdown",
+    "lark",
+    "feishu",
+    "converter"
+  ],
+  "author": "nilibing",
+  "license": "MIT",
+  "dependencies": {
+    "marked": "^14.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0"
+  }
+}

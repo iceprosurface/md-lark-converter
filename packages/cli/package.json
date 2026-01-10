@@ -1,0 +1,30 @@
+{
+  "name": "@md-lark-converter/cli",
+  "version": "1.0.0",
+  "description": "CLI tool for converting Markdown to Lark",
+  "type": "module",
+  "bin": {
+    "md-to-lark": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "lint": "eslint ."
+  },
+  "keywords": [
+    "markdown",
+    "lark",
+    "feishu",
+    "cli",
+    "converter"
+  ],
+  "author": "nilibing",
+  "license": "MIT",
+  "dependencies": {
+    "@md-lark-converter/core": "workspace:*",
+    "chalk": "^5.0.0",
+    "commander": "^12.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0"
+  }
+}
