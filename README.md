@@ -77,13 +77,33 @@ md-to-lark input.md --verbose
 
 ### Web 界面
 
-启动开发服务器：
+#### 简化版（用户使用）
 
 ```bash
 pnpm dev
 ```
 
 访问 http://localhost:5173
+
+**功能**：
+- Markdown ↔ Lark 双向转换
+- 简洁的纯色界面
+- 一键复制/粘贴到剪贴板
+- 适合 Vercel 部署
+
+#### Debug 版本（开发者使用）
+
+```bash
+pnpm dev:debug
+```
+
+访问 http://localhost:5174
+
+**功能**：
+- 完整的转换调试信息
+- 剪贴板数据对比
+- 实时预览
+- 适合开发和测试
 
 ### VSCode 插件
 
@@ -119,8 +139,14 @@ md-lark-converter/
 │   │   └── index.js
 │   ├── cli/            # 命令行工具
 │   │   └── index.js
-│   └── web/            # Web 界面（测试 + Vercel 部署）
+│   ├── web-app/        # Web 简化版（用户使用 + Vercel 部署）
+│   │   ├── src/App.jsx # 双向转换 + 简洁 UI
+│   │   ├── index.html
+│   │   └── vite.config.js
+│   └── web/            # Web Debug 版（开发者使用）
 │       ├── src/
+│       │   ├── App.jsx
+│       │   └── components/DebugComparison.jsx
 │       ├── index.html
 │       └── vite.config.js
 ├── apps/
@@ -215,6 +241,16 @@ pnpm lint
 ## 部署
 
 ### Vercel (Web 版本)
+
+#### 简化版（用户使用）
+
+```bash
+cd packages/web-app
+pnpm build
+vercel deploy
+```
+
+#### Debug 版本（开发者使用）
 
 ```bash
 cd packages/web

@@ -3,13 +3,23 @@
   "version": "1.0.0",
   "description": "Core conversion logic for Markdown to Lark",
   "type": "module",
-  "main": "./index.js",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./index.js"
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
   },
+  "files": [
+    "dist",
+    "lib"
+  ],
   "scripts": {
-    "test": "node test.js",
-    "lint": "eslint ."
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest lib/tests/converter.test.ts"
   },
   "keywords": [
     "markdown",
@@ -23,6 +33,8 @@
     "marked": "^14.0.0"
   },
   "devDependencies": {
-    "eslint": "^9.0.0"
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^2.1.9"
   }
 }

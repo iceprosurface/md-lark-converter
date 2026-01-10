@@ -6,9 +6,9 @@
   "scripts": {
     "build": "pnpm -r --filter './packages/**' build",
     "dev": "pnpm --filter web dev",
+    "dev:debug": "pnpm --filter web dev",
     "test": "pnpm -r test",
-    "lint": "pnpm -r lint",
-    "cli": "pnpm --filter cli start"
+    "lint": "oxlint"
   },
   "keywords": [
     "markdown",
@@ -17,13 +17,14 @@
     "converter",
     "clipboard"
   ],
-  "author": "nilibing",
+  "author": "icepro",
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
   },
   "devDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "oxlint": "^0.2.0"
   },
   "packageManager": "pnpm@9.0.0"
 }

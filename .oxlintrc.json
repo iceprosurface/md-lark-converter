@@ -1,0 +1,26 @@
+{
+  "env": {
+    "browser": true,
+    "es2021": true,
+    "node": true
+  },
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn",
+    "style": "warn",
+    "restriction": "off"
+  },
+  "ignore": [
+    "node_modules",
+    "dist",
+    "build",
+    "*.config.{js,ts}",
+    "*.test.{js,ts}",
+    "coverage"
+  ],
+  "rules": {
+    "no-unused-vars": "error",
+    "@typescript-eslint/no-unused-vars": "error"
+  }
+}
