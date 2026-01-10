@@ -1,8 +1,8 @@
-import { MarkdownToLarkConverter } from './converter/markdownToLark.js';
-export { MarkdownToLarkConverter } from './converter/markdownToLark.js';
-export { generateBlockId, generateRecordId, generatePageId } from './utils/idGenerator.js';
-export { parseMarkdown } from './parser/markdownParser.js';
-import './file/fileOperations.js';
+import { MarkdownToLarkConverter } from "./converter/markdownToLark.js";
+export { MarkdownToLarkConverter } from "./converter/markdownToLark.js";
+export { generateBlockId, generateRecordId, generatePageId } from "./utils/idGenerator.js";
+export { parseMarkdown } from "./parser/markdownParser.js";
+import "./file/fileOperations.js";
 
 export interface ClipboardData {
   isCut: boolean;
@@ -249,12 +249,10 @@ function getTextContent(textData?: TextData): string {
   }
 
   // Parse attributed text to preserve links
-  // attribs can be a string (simple case) or an object { '0': '*0+5*0*1+h*0+1' } (Lark format)
   let attribsStr = '';
   if (typeof attribs === 'string') {
     attribsStr = attribs;
   } else if (attribs && typeof attribs === 'object') {
-    // Extract first value from object
     const values = Object.values(attribs);
     if (values.length > 0 && typeof values[0] === 'string') {
       attribsStr = values[0];
@@ -275,13 +273,11 @@ function parseAttributedText(
   }> = [];
 
   // Parse attribs string (e.g., "*0+5*0*1+3*0*2+2")
-  // Format: *attrNum1*attrNum2*attrNum3+length
   let pos = 0;
   while (pos < attribsStr.length) {
     if (attribsStr[pos] === '*') {
       pos++;
 
-      // Parse all attribute numbers until we hit '+'
       const attrNums: string[] = [];
       while (pos < attribsStr.length && /[0-9]/.test(attribsStr[pos])) {
         let numStr = '';
@@ -291,7 +287,6 @@ function parseAttributedText(
         }
         attrNums.push(numStr);
 
-        // Check if there's another attribute number
         if (pos < attribsStr.length && attribsStr[pos] === '*') {
           pos++;
         } else {
@@ -299,11 +294,9 @@ function parseAttributedText(
         }
       }
 
-      // Expect '+' after all attribute numbers
       if (pos >= attribsStr.length || attribsStr[pos] !== '+') break;
       pos++;
 
-      // Parse length (can be decimal or hex)
       let lengthStr = '';
       while (pos < attribsStr.length) {
         const char = attribsStr[pos];
@@ -323,7 +316,6 @@ function parseAttributedText(
       const text = content.substring(0, length);
       content = content.substring(length);
 
-      // Collect all attributes for this segment
       const attrs: Record<string, unknown> = {};
       for (const num of attrNums) {
         const attrValue = numToAttrib[num];
@@ -340,18 +332,15 @@ function parseAttributedText(
     }
   }
 
-  // Add any remaining content
   if (content) {
     segments.push({ text: content, attrs: {} });
   }
 
-  // Convert segments to Markdown
   let result = '';
 
   for (const segment of segments) {
     const { text, attrs } = segment;
 
-    // Check for link first (takes precedence)
     if (attrs.link) {
       const url = decodeURIComponent(String(attrs.link));
       result += `[${text}](${url})`;

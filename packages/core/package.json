@@ -13,13 +13,13 @@
     }
   },
   "files": [
-    "dist",
-    "lib"
+    "dist"
   ],
   "scripts": {
     "build": "tsc",
+    "prepare": "pnpm build",
     "dev": "tsc --watch",
-    "test": "vitest lib/tests/converter.test.ts"
+    "test": "vitest src/tests/converter.test.ts"
   },
   "keywords": [
     "markdown",
