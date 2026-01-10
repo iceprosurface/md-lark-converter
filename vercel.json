@@ -1,5 +1,6 @@
 {
   "buildCommand": "pnpm --filter @md-lark-converter/web-app build",
   "outputDirectory": "packages/web-app/dist",
+  "installCommand": "pnpm install",
   "framework": "vite"
 }
