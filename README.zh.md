@@ -287,7 +287,7 @@ pnpm --filter @md-lark-converter/core publish
 
 ### Q: Why doesn't it render after pasting?
 
-A: Ensure that JSON data structure is complete, especially `text.apool` and `text.initialAttributedTexts` fields.
+A: Ensure the JSON data structure is complete, especially `text.apool` and `text.initialAttributedTexts` fields.
 
 ### Q: Mermaid charts not showing?
 
@@ -317,4 +317,4 @@ icepro
 
 ## Acknowledgments
 
-Thanks to [Lark](https://www.feishu.cn) for providing an excellent document editor.
+Thanks to [Lark](https://www.feishu.cn) for providing the excellent document editor.
