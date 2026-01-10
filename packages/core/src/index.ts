@@ -2,7 +2,6 @@ import { MarkdownToLarkConverter } from "./converter/markdownToLark.js";
 export { MarkdownToLarkConverter } from "./converter/markdownToLark.js";
 export { generateBlockId, generateRecordId, generatePageId } from "./utils/idGenerator.js";
 export { parseMarkdown } from "./parser/markdownParser.js";
-import "./file/fileOperations.js";
 
 export interface ClipboardData {
   isCut: boolean;
