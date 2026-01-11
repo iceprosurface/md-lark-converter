@@ -1,7 +1,10 @@
 import { MarkdownToLarkConverter } from "./converter/markdownToLark.js";
 export { MarkdownToLarkConverter } from "./converter/markdownToLark.js";
+
 export { generateBlockId, generateRecordId, generatePageId } from "./utils/idGenerator.js";
 export { parseMarkdown } from "./parser/markdownParser.js";
+export { writeToClipboard, readClipboard } from "./clipboard/browserClipboard.js";
+export { generateHtml, generateBlockHtml } from "./htmlGenerator.js";
 
 export interface ClipboardData {
   isCut: boolean;
@@ -29,21 +32,25 @@ export interface RecordData {
 }
 
 export type BlockType =
-  | 'page'
-  | 'text'
-  | 'heading1'
-  | 'heading2'
-  | 'heading3'
-  | 'heading4'
-  | 'heading5'
-  | 'heading6'
-  | 'quote'
-  | 'bullet'
-  | 'ordered'
-  | 'todo'
-  | 'code'
-  | 'divider'
-  | 'isv';
+   | 'page'
+   | 'text'
+   | 'heading1'
+   | 'heading2'
+   | 'heading3'
+   | 'heading4'
+   | 'heading5'
+   | 'heading6'
+   | 'quote'
+   | 'bullet'
+   | 'ordered'
+   | 'todo'
+   | 'code'
+   | 'divider'
+   | 'isv'
+   | 'equation'
+   | 'image'
+   | 'table'
+   | 'table_cell';
 
 export interface BlockSnapshot {
   type: BlockType;
@@ -91,6 +98,10 @@ export interface BlockSnapshot {
   };
   comment_details?: Record<string, unknown>;
   interaction_data_token?: string;
+  columns_id?: string[];
+  rows_id?: string[];
+  column_set?: Record<string, { column_width: number }>;
+  cell_set?: Record<string, { block_id: string; merge_info: { row_span: number; col_span: number } }>;
 }
 
 export interface TextData {
@@ -107,27 +118,57 @@ export interface TextData {
   };
 }
 
-export function markdownToLark(markdown: string): ClipboardData {
+export async function markdownToLark(markdown: string): Promise<ClipboardData> {
   const converter = new MarkdownToLarkConverter();
   return converter.convert(markdown);
 }
 
 export function larkToMarkdown(data: ClipboardData): string {
-  if (!data || !data.recordMap || !data.recordIds) {
+  if (!data || !data.recordMap) {
     return '';
   }
 
-  let markdown = '';
-  let lastType = '';
+  const result: string[] = [];
+  let lastType: string = '';
 
-  for (const recordId of data.recordIds) {
+  // Recursive function to process a node and its children
+  function processRecord(recordId: string, depth: number = 0): void {
     const record = data.recordMap[recordId];
-    if (!record || !record.snapshot) {
-      continue;
-    }
+    if (!record || !record.snapshot) return;
 
     const snapshot = record.snapshot;
 
+    // Skip page nodes (root)
+    if (snapshot.type === 'page') {
+      // Process children of page
+      if (snapshot.children && snapshot.children.length > 0) {
+        for (const childId of snapshot.children) {
+          processRecord(childId);
+        }
+      }
+      return;
+    }
+
+    const isList = ['bullet', 'ordered', 'todo'].includes(snapshot.type);
+
+    // Add separator between different block types
+    if (result.length > 0) {
+      // Different types: add empty line
+      if (lastType !== snapshot.type && lastType !== 'list' && !isList) {
+        result.push('');
+      } else if (lastType === 'text' && snapshot.type === 'text') {
+        // Consecutive paragraphs: add empty line
+        result.push('');
+      } else if (lastType === 'list' && !isList) {
+        // List to non-list: add empty line
+        result.push('');
+      } else if (!isList && lastType !== 'list' && !isList) {
+        // Non-list consecutive items: add empty line
+        result.push('');
+      }
+    }
+
+    // Handle different block types
     switch (snapshot.type) {
       case 'heading1':
       case 'heading2':
@@ -137,78 +178,111 @@ export function larkToMarkdown(data: ClipboardData): string {
       case 'heading6': {
         const level = parseInt(snapshot.type.replace('heading', ''));
         const headingText = getTextContent(snapshot.text);
-        const separator = lastType ? (lastType.startsWith('heading') ? '\n' : '\n\n') : '';
-        markdown += `${separator}${'#'.repeat(level)} ${headingText}`;
+        result.push(`${'#'.repeat(level)} ${headingText}`);
         break;
       }
 
       case 'text': {
         const textContent = getTextContent(snapshot.text);
         if (textContent.trim()) {
-          const separator = lastType ? (lastType === 'text' ? '\n\n' : '\n\n') : '';
-          markdown += `${separator}${textContent}`;
+          result.push(textContent);
         }
         break;
       }
 
       case 'quote': {
         const quoteText = getTextContent(snapshot.text);
-        const separator = lastType ? '\n\n' : '';
-        markdown += `${separator}> ${quoteText}`;
+        result.push(`> ${quoteText}`);
         break;
       }
 
       case 'bullet': {
         const bulletText = getTextContent(snapshot.text);
-        const separator = lastType ? '\n' : '';
-        markdown += `${separator}- ${bulletText}`;
+        const level = snapshot.level || 1;
+        const indent = '  '.repeat(level - 1);
+        result.push(`${indent}- ${bulletText}`);
         break;
       }
 
       case 'ordered': {
         const orderedText = getTextContent(snapshot.text);
-        const separator = lastType ? '\n' : '';
-        markdown += `${separator}1. ${orderedText}`;
+        const level = snapshot.level || 1;
+        const indent = '  '.repeat(level - 1);
+        result.push(`${indent}1. ${orderedText}`);
         break;
       }
 
       case 'todo': {
         const todoText = getTextContent(snapshot.text);
         const isChecked = snapshot.done || false;
-        const separator = lastType ? '\n' : '';
-        markdown += `${separator}- [${isChecked ? 'x' : ' '}] ${todoText}`;
+        const level = snapshot.level || 1;
+        const indent = '  '.repeat(level - 1);
+        result.push(`${indent}- [${isChecked ? 'x' : ' '}] ${todoText}`);
         break;
       }
 
       case 'code': {
         const language = snapshot.language || '';
         const code = snapshot.code || getTextContent(snapshot.text) || '';
-        const separator = lastType ? '\n\n' : '';
-        markdown += `${separator}\`\`\`${language}\n${code}\n\`\`\``;
+        result.push(`\`\`\`${language}`);
+        result.push(code);
+        result.push(`\`\`\``);
         break;
       }
 
       case 'divider': {
-        const separator = lastType ? '\n\n' : '';
-        markdown += `${separator}---`;
+        result.push('---');
         break;
       }
 
       case 'isv': {
         const mermaidCode = snapshot.data?.data || '';
-        const separator = lastType ? '\n\n' : '';
-        markdown += `${separator}\`\`\`mermaid\n${mermaidCode}\n\`\`\``;
+        result.push(`\`\`\`mermaid`);
+        result.push(mermaidCode);
+        result.push(`\`\`\``);
         break;
+      }
+
+      case 'equation': {
+        result.push(`$$${getTextContent(snapshot.text)}$$`);
+        break;
+      }
+
+      case 'image': {
+        result.push('[lark-to-markdown 暂无法支持图片转换]');
+        break;
+      }
+
+      case 'table': {
+        const tableMarkdown = convertTableToMarkdown(recordId, data.recordMap);
+        result.push(tableMarkdown);
+        break;
+      }
+
+      case 'table_cell': {
+        return;
       }
 
       default:
         break;
     }
 
-    lastType = snapshot.type;
+    lastType = isList ? 'list' : snapshot.type;
+
+    // Process children recursively
+    if (snapshot.children && snapshot.children.length > 0) {
+      for (const childId of snapshot.children) {
+        processRecord(childId);
+      }
+    }
   }
 
-  return markdown.trim();
+  // Start processing from root node
+  if (data.rootId) {
+    processRecord(data.rootId);
+  }
+
+  return result.join('\n').trim();
 }
 
 function getTextContent(textData?: TextData): string {
@@ -260,6 +334,119 @@ function getTextContent(textData?: TextData): string {
   return parseAttributedText(texts, attribsStr, textData.apool.numToAttrib);
 }
 
+function convertTableToMarkdown(tableRecordId: string, recordMap: Record<string, RecordData>): string {
+  const tableRecord = recordMap[tableRecordId];
+  if (!tableRecord || !tableRecord.snapshot) {
+    return '';
+  }
+
+  const snapshot = tableRecord.snapshot;
+  const { columns_id, rows_id, cell_set } = snapshot as any;
+
+  if (!columns_id || !rows_id || !cell_set) {
+    return '';
+  }
+
+  const rows: string[][] = [];
+
+  for (const rowId of rows_id) {
+    const row: string[] = [];
+    for (const colId of columns_id) {
+      const cellKey = `${rowId}${colId}`;
+      const cell = cell_set[cellKey];
+      if (cell && cell.block_id) {
+        const cellRecord = recordMap[cell.block_id];
+        if (cellRecord && cellRecord.snapshot) {
+          const cellSnapshot = cellRecord.snapshot;
+          const childId = cellSnapshot.children && cellSnapshot.children.length > 0
+            ? cellSnapshot.children[0]
+            : null;
+          if (childId) {
+            const textRecord = recordMap[childId];
+            if (textRecord && textRecord.snapshot) {
+              const cellText = getTextContent(textRecord.snapshot.text);
+              row.push(cellText);
+            } else {
+              row.push('');
+            }
+          } else {
+            row.push('');
+          }
+        } else {
+          row.push('');
+        }
+      } else {
+        row.push('');
+      }
+    }
+    rows.push(row);
+  }
+
+  if (rows.length === 0) {
+    return '';
+  }
+
+  const colCount = columns_id.length;
+  const alignments: string[] = [];
+
+  for (const colId of columns_id) {
+    const cellKey = `${rows_id[0]}${colId}`;
+    const cell = cell_set[cellKey];
+    if (cell && cell.block_id) {
+      const cellRecord = recordMap[cell.block_id];
+      if (cellRecord && cellRecord.snapshot) {
+        const cellSnapshot = cellRecord.snapshot;
+        const childId = cellSnapshot.children && cellSnapshot.children.length > 0
+          ? cellSnapshot.children[0]
+          : null;
+        if (childId) {
+          const textRecord = recordMap[childId];
+          if (textRecord && textRecord.snapshot && textRecord.snapshot.align) {
+            const align = textRecord.snapshot.align as string;
+            alignments.push(align);
+          } else {
+            alignments.push('left');
+          }
+        } else {
+          alignments.push('left');
+        }
+      } else {
+        alignments.push('left');
+      }
+    } else {
+      alignments.push('left');
+    }
+  }
+
+  const separatorRow = alignments.map(align => {
+    switch (align) {
+      case 'center':
+        return ':--:';
+      case 'right':
+        return '---:';
+      case 'left':
+      default:
+        return ':---';
+    }
+  });
+
+  const markdownRows: string[] = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const formattedRow = row.map(cell => {
+      return cell.includes('|') ? `"${cell.replace(/"/g, '""')}"` : cell;
+    }).join(' | ');
+    markdownRows.push(`| ${formattedRow} |`);
+
+    if (i === 0) {
+      markdownRows.push(`| ${separatorRow.join(' | ')} |`);
+    }
+  }
+
+  return markdownRows.join('\n');
+}
+
 function parseAttributedText(
   texts: Record<string, string>,
   attribsStr: string,
@@ -299,7 +486,7 @@ function parseAttributedText(
       let lengthStr = '';
       while (pos < attribsStr.length) {
         const char = attribsStr[pos];
-        if (/[0-9a-fA-F]/.test(char)) {
+        if (/[0-9]/.test(char)) {
           lengthStr += char;
           pos++;
         } else {
@@ -311,7 +498,7 @@ function parseAttributedText(
         continue;
       }
 
-      const length = parseInt(lengthStr, 16) || 0;
+      const length = parseInt(lengthStr, 10) || 0;
       const text = content.substring(0, length);
       content = content.substring(length);
 
@@ -343,6 +530,11 @@ function parseAttributedText(
     if (attrs.link) {
       const url = decodeURIComponent(String(attrs.link));
       result += `[${text}](${url})`;
+    } else if (attrs.equation) {
+      const equation = String(attrs.equation).trim();
+      const isDisplay = equation.endsWith('_display');
+      const cleanEquation = isDisplay ? equation.slice(0, -8) : equation;
+      result += isDisplay ? `$$${cleanEquation}$$` : `$${cleanEquation}$`;
     } else {
       let formattedText = text;
 

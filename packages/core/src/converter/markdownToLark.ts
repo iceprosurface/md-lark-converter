@@ -1,5 +1,12 @@
+/// <reference types="mdast-util-math" />
 import { generateBlockId, generateRecordId, generatePageId } from '../utils/idGenerator.js';
-import * as marked from 'marked';
+import { unified } from 'unified';
+import remarkParse from 'remark-parse';
+import remarkMath from 'remark-math';
+import remarkGfm from 'remark-gfm';
+import { visit, SKIP } from 'unist-util-visit';
+import type { Root, Heading, Paragraph, List, ListItem, Blockquote, Code, ThematicBreak, Strong, Emphasis, Link, InlineCode, Delete } from 'mdast';
+import type { Math, InlineMath } from 'mdast-util-math';
 import type { ClipboardData } from '../index.js';
 
 interface TextSegment {
@@ -9,6 +16,7 @@ interface TextSegment {
   italic?: boolean;
   underline?: boolean;
   strikethrough?: boolean;
+  equation?: string;
 }
 
 export class MarkdownToLarkConverter {
@@ -32,7 +40,7 @@ export class MarkdownToLarkConverter {
     this.apoolNumToAttrib = {};
   }
 
-  convert(markdown: string): ClipboardData {
+  async convert(markdown: string): Promise<ClipboardData> {
     this.rootId = generatePageId();
     this.recordMap = {};
     this.blockIds = [];
@@ -41,12 +49,24 @@ export class MarkdownToLarkConverter {
     this.apoolNextNum = 0;
     this.apoolNumToAttrib = {};
 
-    const tokens = marked.lexer(markdown);
+    const normalizedMarkdown = this.normalizeMathBlocks(markdown);
+
+    const tree = await unified()
+      .use(remarkParse)
+      .use(remarkGfm)
+      .use(remarkMath)
+      .parse(normalizedMarkdown);
 
     this.createPageBlock(this.rootId);
-    this.convertTokens(tokens);
+    this.convertTree(tree);
 
     return this.buildClipboardData();
+  }
+
+  private normalizeMathBlocks(markdown: string): string {
+    return markdown.replace(/\$\$([^\n]+?)\$\$/g, (_, content) => {
+      return `$$\n${content.trim()}\n$$`;
+    });
   }
 
   private createPageBlock(pageId: string): void {
@@ -75,60 +95,96 @@ export class MarkdownToLarkConverter {
     };
   }
 
-  private convertTokens(tokens: any[]): void {
-    for (const token of tokens) {
-      const blockId = this.convertToken(token);
-      if (blockId) {
-        this.recordIds.push(blockId);
-        this.blockIds.push(this.blockIds.length + 1);
+  private convertTree(tree: Root): void {
+    const topLevelRecordIds: string[] = [];
+
+    visit(tree, (node, index, parent) => {
+      if (parent?.type === 'listItem') {
+        return SKIP;
       }
-    }
-  }
 
-  private convertToken(token: any): string | null {
-    const { type, raw, text, depth, items, code, lang, ordered } = token;
-
-    const recordId = generateRecordId();
-
-    switch (type) {
-      case 'heading':
-        this.recordMap[recordId] = this.createHeadingBlock(recordId, depth, this.parseInlineTokens((token as any).tokens || []));
-        break;
-
-      case 'paragraph':
-        this.recordMap[recordId] = this.createTextBlock(recordId, this.parseInlineTokens((token as any).tokens || []));
-        break;
-
-      case 'blockquote':
-        this.recordMap[recordId] = this.createQuoteBlock(recordId, this.parseInlineTokens((token as any).tokens || []));
-        break;
-
-      case 'list':
-        this.convertListItems(items, ordered);
-        return null;
-
-      case 'code':
-        const codeContent = text || code || raw;
-        if (lang && lang.toLowerCase() === 'mermaid') {
-          this.recordMap[recordId] = this.createMermaidBlock(recordId, codeContent);
+      if (node.type === 'heading') {
+        const recordId = generateRecordId();
+        this.recordMap[recordId] = this.createHeadingBlock(recordId, node as Heading);
+        this.recordIds.push(recordId);
+        this.blockIds.push(this.blockIds.length + 1);
+        topLevelRecordIds.push(recordId);
+      } else if (node.type === 'paragraph') {
+        const recordId = generateRecordId();
+        this.recordMap[recordId] = this.createTextBlock(recordId, node as Paragraph);
+        this.recordIds.push(recordId);
+        this.blockIds.push(this.blockIds.length + 1);
+        topLevelRecordIds.push(recordId);
+      } else if (node.type === 'blockquote') {
+        const recordId = generateRecordId();
+        this.recordMap[recordId] = this.createQuoteBlock(recordId, node as Blockquote);
+        this.recordIds.push(recordId);
+        this.blockIds.push(this.blockIds.length + 1);
+        topLevelRecordIds.push(recordId);
+        return SKIP;
+      } else if (node.type === 'code') {
+        const recordId = generateRecordId();
+        const codeNode = node as Code;
+        if (codeNode.lang && codeNode.lang.toLowerCase() === 'mermaid') {
+          this.recordMap[recordId] = this.createMermaidBlock(recordId, codeNode.value);
         } else {
-          this.recordMap[recordId] = this.createCodeBlock(recordId, codeContent, lang);
+          this.recordMap[recordId] = this.createCodeBlock(recordId, codeNode.value, codeNode.lang ?? undefined);
         }
-        break;
-
-      case 'hr':
+        this.recordIds.push(recordId);
+        this.blockIds.push(this.blockIds.length + 1);
+        topLevelRecordIds.push(recordId);
+      } else if (node.type === 'thematicBreak') {
+        const recordId = generateRecordId();
         this.recordMap[recordId] = this.createDividerBlock(recordId);
-        break;
+        this.recordIds.push(recordId);
+        this.blockIds.push(this.blockIds.length + 1);
+        topLevelRecordIds.push(recordId);
+      } else if (node.type === 'math') {
+        const mathNode = node as any;
+        const recordId = generateRecordId();
+        const equation = mathNode.value ?? '';
+        this.recordMap[recordId] = this.createEquationParagraphBlock(recordId, equation);
+        this.recordIds.push(recordId);
+        this.blockIds.push(this.blockIds.length + 1);
+        topLevelRecordIds.push(recordId);
+      } else if (node.type === 'table') {
+        const tableRecordIds = this.convertTable(node);
+        topLevelRecordIds.push(tableRecordIds.tableId);
+      }
+    });
 
-      default:
-        return null;
+    const processedLists = new Set<any>();
+    visit(tree, 'list', (node, index, parent) => {
+      if (processedLists.has(node)) {
+        return SKIP;
+      }
+      processedLists.add(node);
+      if (parent?.type === 'listItem') {
+        return SKIP;
+      }
+      const listRecordIds = this.convertList(node as List);
+      topLevelRecordIds.push(...listRecordIds);
+    });
+
+    if (this.rootId && this.recordMap[this.rootId]) {
+      this.recordMap[this.rootId].snapshot.children = topLevelRecordIds;
     }
-
-    return recordId;
   }
 
-  private convertListItems(items: any[], ordered: boolean | undefined, parentId: string | null = null, level: number = 0): string[] {
+  private convertList(listNode: List): string[] {
+    const ordered = listNode.ordered || false;
+    return this.convertListItems(listNode.children as ListItem[], ordered, null, 0, true);
+  }
+
+  private convertListItems(
+    items: ListItem[],
+    ordered: boolean,
+    parentId: string | null = null,
+    level: number = 0,
+    isTopLevel: boolean = false
+  ): string[] {
     const childRecordIds: string[] = [];
+    const topLevelIds: string[] = [];
     let index = 1;
 
     for (const item of items) {
@@ -136,15 +192,20 @@ export class MarkdownToLarkConverter {
       const blockId = this.blockIds.length + 1;
       let blockType = ordered ? 'ordered' : 'bullet';
 
-      if (item.checked !== undefined) {
+      const isTaskItem = item.checked !== undefined && item.checked !== null;
+      if (isTaskItem) {
         blockType = 'todo';
       }
 
-      // Parse text content - exclude nested lists from text
-      const textContent = item.text.split('\n')[0] || '';
-      const textData = this.parseInlineText(textContent);
+      const listContent = item.children;
+      const segments = listContent.length > 0 && listContent[0].type === 'paragraph'
+        ? this.parseInlineContent(listContent[0].children)
+        : this.parseInlineContent(listContent);
 
-      this.recordIds.push(recordId);
+      // Only add to recordIds for top-level items (matching Lark's structure)
+      if (isTopLevel && level === 0) {
+        this.recordIds.push(recordId);
+      }
 
       const snapshot: any = {
         type: blockType,
@@ -155,33 +216,35 @@ export class MarkdownToLarkConverter {
         hidden: false,
         author: this.authorId,
         children: [],
-        text: ordered ? this.createListItemTextData(textData) : this.createTextData(textData),
+        text: ordered ? this.createListItemTextData(segments) : this.createTextData(segments),
         align: '',
         folded: false
       };
 
-      if (item.checked !== undefined) {
-        snapshot.done = item.checked;
+      if (isTaskItem) {
+        snapshot.done = item.checked || false;
       }
 
+      // Set level for all list items, not just ordered lists
       if (ordered) {
         snapshot.level = level + 1;
         snapshot.seq = index === 1 ? '1' : 'auto';
         index++;
-      } else if (level > 0) {
-        // For bullet lists, level starts from 1 for nested items
-        snapshot.level = level;
+      } else {
+        // Set level for bullet lists too (1 for top-level, 2 for nested, etc.)
+        snapshot.level = level + 1;
       }
 
-      // Check if this item has nested lists
-      if (item.tokens && Array.isArray(item.tokens)) {
-        for (const token of item.tokens) {
-          if (token.type === 'list' && token.items) {
-            // Recursively convert nested list items
-            const nestedChildIds = this.convertListItems(token.items, token.ordered, recordId, level + 1);
-            // Add nested items to current item's children
-            snapshot.children.push(...nestedChildIds);
-          }
+      for (const child of item.children) {
+        if (child.type === 'list') {
+          const nestedChildIds = this.convertListItems(
+            (child as List).children as ListItem[],
+            (child as List).ordered || false,
+            recordId,
+            level + 1,
+            false
+          );
+          snapshot.children.push(...nestedChildIds);
         }
       }
 
@@ -192,276 +255,69 @@ export class MarkdownToLarkConverter {
 
       this.blockIds.push(blockId);
       childRecordIds.push(recordId);
+
+      if (isTopLevel && level === 0) {
+        topLevelIds.push(recordId);
+      }
     }
 
-    return childRecordIds;
+    return isTopLevel ? topLevelIds : childRecordIds;
   }
 
-  private createListItemTextData(segments: TextSegment[]): any {
-    if (!segments || segments.length === 0) {
-      return {
-        apool: { nextNum: 0, numToAttrib: {} },
-        initialAttributedTexts: {
-          attribs: "",
-          text: { '0': '' },
-          rows: {},
-          cols: {}
-        }
-      };
-    }
-
-    const apoolNumToAttrib: Record<string, unknown> = {
-      '0': ['author', this.authorId]
-    };
-    const attribToNum: Record<string, number> = {
-      [`author,${this.authorId}`]: 0
-    };
-
-    let apoolNextNum = 1;
-    const attribParts: string[] = [];
-    const textParts: string[] = [];
-
-    for (const segment of segments) {
-      const text = segment.text || '';
-      const length = text.length;
-
-      if (length === 0) continue;
-
-      textParts.push(text);
-
-      const activeAttrs: string[] = ['0'];
-
-      if (segment.linkUrl) {
-        const linkAttrNum = apoolNextNum.toString();
-        apoolNextNum++;
-        const encodedUrl = encodeURIComponent(segment.linkUrl);
-        apoolNumToAttrib[linkAttrNum] = ['link', encodedUrl];
-        attribToNum[`link,${encodedUrl}`] = parseInt(linkAttrNum);
-        activeAttrs.push(linkAttrNum);
-      }
-
-      if (segment.bold) {
-        const boldAttrNum = apoolNumToAttrib['1'] ? '1' : apoolNextNum.toString();
-        if (!apoolNumToAttrib['1']) {
-          apoolNextNum++;
-          apoolNumToAttrib[boldAttrNum] = ['bold', 'true'];
-          attribToNum['bold,true'] = parseInt(boldAttrNum);
-        }
-        activeAttrs.push(boldAttrNum);
-      }
-
-      if (segment.italic) {
-        const italicAttrNum = apoolNumToAttrib['2'] ? '2' : apoolNextNum.toString();
-        if (!apoolNumToAttrib['2']) {
-          apoolNextNum++;
-          apoolNumToAttrib[italicAttrNum] = ['italic', 'true'];
-          attribToNum['italic,true'] = parseInt(italicAttrNum);
-        }
-        activeAttrs.push(italicAttrNum);
-      }
-
-      if (segment.underline) {
-        const underlineAttrNum = apoolNumToAttrib['4'] ? '4' : apoolNextNum.toString();
-        if (!apoolNumToAttrib['4']) {
-          apoolNextNum++;
-          apoolNumToAttrib[underlineAttrNum] = ['underline', 'true'];
-          attribToNum['underline,true'] = parseInt(underlineAttrNum);
-        }
-        activeAttrs.push(underlineAttrNum);
-      }
-
-      if (segment.strikethrough) {
-        const strikeAttrNum = apoolNumToAttrib['5'] ? '5' : apoolNextNum.toString();
-        if (!apoolNumToAttrib['5']) {
-          apoolNextNum++;
-          apoolNumToAttrib[strikeAttrNum] = ['strikethrough', 'true'];
-          attribToNum['strikethrough,true'] = parseInt(strikeAttrNum);
-        }
-        activeAttrs.push(strikeAttrNum);
-      }
-
-      const attrsPart = activeAttrs.join('*');
-      attribParts.push(`*${attrsPart}+${length}`);
-    }
-
-    const fullText = textParts.join('');
-    const attribsStr = attribParts.join('');
-
-    return {
-      apool: {
-        nextNum: apoolNextNum,
-        numToAttrib: apoolNumToAttrib,
-        attribToNum
-      },
-      initialAttributedTexts: {
-        attribs: { '0': attribsStr },
-        text: { '0': fullText },
-        rows: {},
-        cols: {}
-      }
-    };
-  }
-
-  private parseInlineText(text: string): TextSegment[] {
-    if (!text) return [];
-
-    const inlineTokens = marked.lexer(text, { breaks: true });
-
-    return this.parseInlineTokens(inlineTokens);
-  }
-
-  private parseInlineTokens(inlineTokens: any[]): TextSegment[] {
+  private parseInlineContent(children: any[]): TextSegment[] {
     const segments: TextSegment[] = [];
-    for (const token of inlineTokens) {
-      switch (token.type) {
-        case 'text':
-          segments.push({ text: token.raw });
-          break;
-        case 'strong':
-          segments.push({ text: token.text, bold: true });
-          break;
-        case 'em':
-          segments.push({ text: token.text, italic: true });
-          break;
-        case 'del':
-          segments.push({ text: token.text, strikethrough: true });
-          break;
-        case 'codespan':
-          segments.push({ text: token.raw });
-          break;
-        case 'link':
-          segments.push({ text: token.text, linkUrl: token.href });
-          break;
-        case 'image':
-          segments.push({ text: `![${token.text}](${token.href})` });
-          break;
-        default:
-          segments.push({ text: token.raw || '' });
+
+    for (const child of children) {
+      if (child.type === 'text') {
+        segments.push({ text: child.value });
+      } else if (child.type === 'strong') {
+        const text = this.extractTextContent(child);
+        segments.push({ text, bold: true });
+      } else if (child.type === 'emphasis') {
+        const text = this.extractTextContent(child);
+        segments.push({ text, italic: true });
+      } else if (child.type === 'delete') {
+        const text = this.extractTextContent(child);
+        segments.push({ text, strikethrough: true });
+      } else if (child.type === 'inlineCode') {
+        segments.push({ text: child.value });
+      } else if (child.type === 'link') {
+        const linkNode = child as Link;
+        const text = this.extractTextContent(linkNode);
+        segments.push({ text, linkUrl: linkNode.url });
+      } else if (child.type === 'image') {
+        segments.push({ text: ' [markdown-to-lark 暂无法支持图片转换] ' });
+      } else if (child.type === 'inlineMath') {
+        const mathNode = child as any;
+        segments.push({ text: 'E', equation: mathNode.value ?? '' });
+      } else if (child.type === 'break') {
+        segments.push({ text: '\n' });
       }
     }
+
     return segments;
   }
 
-  private createTextData(segments: TextSegment[] | string): any {
-    // Handle backward compatibility - accept string as well
-    if (typeof segments === 'string') {
-      segments = [{ text: segments }];
+  private extractTextContent(node: any): string {
+    let text = '';
+    if (node.type === 'text') {
+      text = node.value;
+    } else if (node.children) {
+      for (const child of node.children) {
+        text += this.extractTextContent(child);
+      }
     }
-
-    if (!segments || segments.length === 0) {
-      return {
-        apool: { nextNum: 0, numToAttrib: {} },
-        initialAttributedTexts: {
-          attribs: "",
-          text: { '0': "" },
-          rows: {},
-          cols: {}
-        }
-      };
-    }
-
-    const apoolNumToAttrib: Record<string, unknown> = {
-      '0': ['author', this.authorId]
-    };
-    const attribToNum: Record<string, number> = {
-      [`author,${this.authorId}`]: 0
-    };
-
-    let apoolNextNum = 1;
-    const attribParts: string[] = [];
-    const textParts: string[] = [];
-
-    // Build full text and attribs string
-    for (const segment of segments) {
-      const text = segment.text || '';
-      const length = text.length;
-
-      if (length === 0) continue;
-
-      textParts.push(text);
-
-      // Collect all active attributes for this segment
-      const activeAttrs: string[] = ['0']; // Always include author
-
-      if (segment.linkUrl) {
-        const linkAttrNum = apoolNextNum.toString();
-        apoolNextNum++;
-        const encodedUrl = encodeURIComponent(segment.linkUrl);
-        apoolNumToAttrib[linkAttrNum] = ['link', encodedUrl];
-        attribToNum[`link,${encodedUrl}`] = parseInt(linkAttrNum);
-        activeAttrs.push(linkAttrNum);
-      }
-
-      if (segment.bold) {
-        const boldAttrNum = apoolNumToAttrib['1'] ? '1' : apoolNextNum.toString();
-        if (!apoolNumToAttrib['1']) {
-          apoolNextNum++;
-          apoolNumToAttrib[boldAttrNum] = ['bold', 'true'];
-          attribToNum['bold,true'] = parseInt(boldAttrNum);
-        }
-        activeAttrs.push(boldAttrNum);
-      }
-
-      if (segment.italic) {
-        const italicAttrNum = apoolNumToAttrib['2'] ? '2' : apoolNextNum.toString();
-        if (!apoolNumToAttrib['2']) {
-          apoolNextNum++;
-          apoolNumToAttrib[italicAttrNum] = ['italic', 'true'];
-          attribToNum['italic,true'] = parseInt(italicAttrNum);
-        }
-        activeAttrs.push(italicAttrNum);
-      }
-
-      if (segment.underline) {
-        const underlineAttrNum = apoolNumToAttrib['4'] ? '4' : apoolNextNum.toString();
-        if (!apoolNumToAttrib['4']) {
-          apoolNextNum++;
-          apoolNumToAttrib[underlineAttrNum] = ['underline', 'true'];
-          attribToNum['underline,true'] = parseInt(underlineAttrNum);
-        }
-        activeAttrs.push(underlineAttrNum);
-      }
-
-      if (segment.strikethrough) {
-        const strikeAttrNum = apoolNumToAttrib['5'] ? '5' : apoolNextNum.toString();
-        if (!apoolNumToAttrib['5']) {
-          apoolNextNum++;
-          apoolNumToAttrib[strikeAttrNum] = ['strikethrough', 'true'];
-          attribToNum['strikethrough,true'] = parseInt(strikeAttrNum);
-        }
-        activeAttrs.push(strikeAttrNum);
-      }
-
-      // Create attribs string: *attr1*attr2+length
-      const attrsPart = activeAttrs.join('*');
-      attribParts.push(`*${attrsPart}+${length}`);
-    }
-
-    const fullText = textParts.join('');
-    const attribsStr = attribParts.join('');
-
-    return {
-      apool: {
-        nextNum: apoolNextNum,
-        numToAttrib: apoolNumToAttrib,
-        attribToNum
-      },
-      initialAttributedTexts: {
-        attribs: { '0': attribsStr },
-        text: { '0': fullText },
-        rows: {},
-        cols: {}
-      }
-    };
+    return text;
   }
 
-  private createHeadingBlock(recordId: string, depth: number, segments: TextSegment[]): any {
-    const blockType = `heading${depth}`;
+  private createHeadingBlock(recordId: string, node: Heading): any {
+    const depth = node.depth;
+    const segments = this.parseInlineContent(node.children);
 
     return {
       id: recordId,
       snapshot: {
-        type: blockType,
+        type: `heading${depth}`,
         parent_id: this.rootId,
         comments: [],
         revisions: [],
@@ -476,7 +332,9 @@ export class MarkdownToLarkConverter {
     };
   }
 
-  private createTextBlock(recordId: string, segments: TextSegment[]): any {
+  private createTextBlock(recordId: string, node: Paragraph): any {
+    const segments = this.parseInlineContent(node.children);
+
     return {
       id: recordId,
       snapshot: {
@@ -495,7 +353,10 @@ export class MarkdownToLarkConverter {
     };
   }
 
-  private createQuoteBlock(recordId: string, segments: TextSegment[]): any {
+  private createQuoteBlock(recordId: string, node: Blockquote): any {
+    const flattenedContent = this.flattenNestedBlockquotes(node.children);
+    const segments = this.parseInlineContent(flattenedContent);
+
     return {
       id: recordId,
       snapshot: {
@@ -508,6 +369,76 @@ export class MarkdownToLarkConverter {
         author: this.authorId,
         children: [],
         text: this.createTextData(segments),
+        folded: false
+      }
+    };
+  }
+
+  private flattenNestedBlockquotes(children: any[]): any[] {
+    const result: any[] = [];
+
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (child.type === 'blockquote') {
+        const nestedContent = this.flattenNestedBlockquotes(child.children);
+        if (result.length > 0) {
+          result.push({ type: 'text', value: '\n\n' });
+        }
+        result.push(...nestedContent);
+      } else if (child.type === 'paragraph') {
+        if (result.length > 0) {
+          result.push({ type: 'text', value: '\n\n' });
+        }
+        result.push(...child.children);
+      } else {
+        result.push(child);
+      }
+    }
+
+    return result;
+  }
+
+  private createEquationBlock(recordId: string, equation: string): any {
+    const segments: TextSegment[] = [{ text: 'E', equation }];
+
+    return {
+      id: recordId,
+      snapshot: {
+        type: 'equation',
+        parent_id: this.rootId,
+        comments: [],
+        revisions: [],
+        locked: false,
+        hidden: false,
+        author: this.authorId,
+        children: [],
+        elements: [{
+          equation: {
+            latex: equation
+          }
+        }],
+        text: this.createTextData(segments),
+        folded: false
+      }
+    };
+  }
+
+  private createEquationParagraphBlock(recordId: string, equation: string): any {
+    const segments: TextSegment[] = [{ text: 'E', equation: equation + '_display' }];
+
+    return {
+      id: recordId,
+      snapshot: {
+        type: 'text',
+        parent_id: this.rootId,
+        comments: [],
+        revisions: [],
+        locked: false,
+        hidden: false,
+        author: this.authorId,
+        children: [],
+        text: this.createTextData(segments),
+        align: '',
         folded: false
       }
     };
@@ -591,6 +522,252 @@ export class MarkdownToLarkConverter {
     };
   }
 
+  private createTextData(segments: TextSegment[] | string): any {
+    if (typeof segments === 'string') {
+      segments = [{ text: segments }];
+    }
+
+    if (!segments || segments.length === 0) {
+      return {
+        apool: { nextNum: 0, numToAttrib: {} },
+        initialAttributedTexts: {
+          attribs: "",
+          text: { '0': "" },
+          rows: {},
+          cols: {}
+        }
+      };
+    }
+
+    const apoolNumToAttrib: Record<string, unknown> = {
+      '0': ['author', this.authorId]
+    };
+    const attribToNum: Record<string, number> = {
+      [`author,${this.authorId}`]: 0
+    };
+
+    let apoolNextNum = 1;
+    const attribParts: string[] = [];
+    const textParts: string[] = [];
+
+    for (const segment of segments) {
+      const text = segment.text || '';
+      const length = text.length;
+
+      if (length === 0) continue;
+
+      textParts.push(text);
+
+      const activeAttrs: string[] = ['0'];
+
+      if (segment.linkUrl) {
+        const linkAttrNum = apoolNextNum.toString();
+        apoolNextNum++;
+        const encodedUrl = encodeURIComponent(segment.linkUrl);
+        apoolNumToAttrib[linkAttrNum] = ['link', encodedUrl];
+        attribToNum[`link,${encodedUrl}`] = parseInt(linkAttrNum);
+        activeAttrs.push(linkAttrNum);
+      }
+
+      if (segment.bold) {
+        const boldAttrKey = 'bold,true';
+        let boldAttrNum = attribToNum[boldAttrKey];
+        if (boldAttrNum === undefined) {
+          boldAttrNum = apoolNextNum;
+          apoolNextNum++;
+          apoolNumToAttrib[boldAttrNum.toString()] = ['bold', 'true'];
+          attribToNum[boldAttrKey] = boldAttrNum;
+        }
+        activeAttrs.push(boldAttrNum.toString());
+      }
+
+      if (segment.italic) {
+        const italicAttrKey = 'italic,true';
+        let italicAttrNum = attribToNum[italicAttrKey];
+        if (italicAttrNum === undefined) {
+          italicAttrNum = apoolNextNum;
+          apoolNextNum++;
+          apoolNumToAttrib[italicAttrNum.toString()] = ['italic', 'true'];
+          attribToNum[italicAttrKey] = italicAttrNum;
+        }
+        activeAttrs.push(italicAttrNum.toString());
+      }
+
+      if (segment.underline) {
+        const underlineAttrKey = 'underline,true';
+        let underlineAttrNum = attribToNum[underlineAttrKey];
+        if (underlineAttrNum === undefined) {
+          underlineAttrNum = apoolNextNum;
+          apoolNextNum++;
+          apoolNumToAttrib[underlineAttrNum.toString()] = ['underline', 'true'];
+          attribToNum[underlineAttrKey] = underlineAttrNum;
+        }
+        activeAttrs.push(underlineAttrNum.toString());
+      }
+
+      if (segment.strikethrough) {
+        const strikeAttrKey = 'strikethrough,true';
+        let strikeAttrNum = attribToNum[strikeAttrKey];
+        if (strikeAttrNum === undefined) {
+          strikeAttrNum = apoolNextNum;
+          apoolNextNum++;
+          apoolNumToAttrib[strikeAttrNum.toString()] = ['strikethrough', 'true'];
+          attribToNum[strikeAttrKey] = strikeAttrNum;
+        }
+        activeAttrs.push(strikeAttrNum.toString());
+      }
+
+      if (segment.equation) {
+        const eqAttrNum = apoolNextNum.toString();
+        apoolNextNum++;
+        apoolNumToAttrib[eqAttrNum] = ['equation', segment.equation];
+        attribToNum[`equation,${segment.equation}`] = parseInt(eqAttrNum);
+        activeAttrs.push(eqAttrNum);
+      }
+
+      const attrsPart = activeAttrs.join('*');
+      attribParts.push(`*${attrsPart}+${length}`);
+    }
+
+    const fullText = textParts.join('');
+    const attribsStr = attribParts.join('');
+
+    return {
+      apool: {
+        nextNum: apoolNextNum,
+        numToAttrib: apoolNumToAttrib,
+        attribToNum
+      },
+      initialAttributedTexts: {
+        attribs: { '0': attribsStr },
+        text: { '0': fullText },
+        rows: {},
+        cols: {}
+      }
+    };
+  }
+
+  private createListItemTextData(segments: TextSegment[]): any {
+    if (!segments || segments.length === 0) {
+      return {
+        apool: { nextNum: 0, numToAttrib: {} },
+        initialAttributedTexts: {
+          attribs: "",
+          text: { '0': '' },
+          rows: {},
+          cols: {}
+        }
+      };
+    }
+
+    const apoolNumToAttrib: Record<string, unknown> = {
+      '0': ['author', this.authorId]
+    };
+    const attribToNum: Record<string, number> = {
+      [`author,${this.authorId}`]: 0
+    };
+
+    let apoolNextNum = 1;
+    const attribParts: string[] = [];
+    const textParts: string[] = [];
+
+    for (const segment of segments) {
+      const text = segment.text || '';
+      const length = text.length;
+
+      if (length === 0) continue;
+
+      textParts.push(text);
+
+      const activeAttrs: string[] = ['0'];
+
+      if (segment.linkUrl) {
+        const linkAttrNum = apoolNextNum.toString();
+        apoolNextNum++;
+        const encodedUrl = encodeURIComponent(segment.linkUrl);
+        apoolNumToAttrib[linkAttrNum] = ['link', encodedUrl];
+        attribToNum[`link,${encodedUrl}`] = parseInt(linkAttrNum);
+        activeAttrs.push(linkAttrNum);
+      }
+
+      if (segment.bold) {
+        const boldAttrKey = 'bold,true';
+        let boldAttrNum = attribToNum[boldAttrKey];
+        if (boldAttrNum === undefined) {
+          boldAttrNum = apoolNextNum;
+          apoolNextNum++;
+          apoolNumToAttrib[boldAttrNum.toString()] = ['bold', 'true'];
+          attribToNum[boldAttrKey] = boldAttrNum;
+        }
+        activeAttrs.push(boldAttrNum.toString());
+      }
+
+      if (segment.italic) {
+        const italicAttrKey = 'italic,true';
+        let italicAttrNum = attribToNum[italicAttrKey];
+        if (italicAttrNum === undefined) {
+          italicAttrNum = apoolNextNum;
+          apoolNextNum++;
+          apoolNumToAttrib[italicAttrNum.toString()] = ['italic', 'true'];
+          attribToNum[italicAttrKey] = italicAttrNum;
+        }
+        activeAttrs.push(italicAttrNum.toString());
+      }
+
+      if (segment.underline) {
+        const underlineAttrKey = 'underline,true';
+        let underlineAttrNum = attribToNum[underlineAttrKey];
+        if (underlineAttrNum === undefined) {
+          underlineAttrNum = apoolNextNum;
+          apoolNextNum++;
+          apoolNumToAttrib[underlineAttrNum.toString()] = ['underline', 'true'];
+          attribToNum[underlineAttrKey] = underlineAttrNum;
+        }
+        activeAttrs.push(underlineAttrNum.toString());
+      }
+
+      if (segment.strikethrough) {
+        const strikeAttrKey = 'strikethrough,true';
+        let strikeAttrNum = attribToNum[strikeAttrKey];
+        if (strikeAttrNum === undefined) {
+          strikeAttrNum = apoolNextNum;
+          apoolNextNum++;
+          apoolNumToAttrib[strikeAttrNum.toString()] = ['strikethrough', 'true'];
+          attribToNum[strikeAttrKey] = strikeAttrNum;
+        }
+        activeAttrs.push(strikeAttrNum.toString());
+      }
+
+      if (segment.equation) {
+        const eqAttrNum = apoolNextNum.toString();
+        apoolNextNum++;
+        apoolNumToAttrib[eqAttrNum] = ['equation', segment.equation];
+        attribToNum[`equation,${segment.equation}`] = parseInt(eqAttrNum);
+        activeAttrs.push(eqAttrNum);
+      }
+
+      const attrsPart = activeAttrs.join('*');
+      attribParts.push(`*${attrsPart}+${length}`);
+    }
+
+    const fullText = textParts.join('');
+    const attribsStr = attribParts.join('');
+
+    return {
+      apool: {
+        nextNum: apoolNextNum,
+        numToAttrib: apoolNumToAttrib,
+        attribToNum
+      },
+      initialAttributedTexts: {
+        attribs: { '0': attribsStr },
+        text: { '0': fullText },
+        rows: {},
+        cols: {}
+      }
+    };
+  }
+
   private buildClipboardData(): ClipboardData {
     const data: ClipboardData = {
       isCut: false,
@@ -621,5 +798,119 @@ export class MarkdownToLarkConverter {
       const v = c === 'x' ? r : (r & 0x3 | 0x8);
       return v.toString(16);
     });
+  }
+
+  private convertTable(tableNode: any): { tableId: string } {
+    const tableRecordId = generateRecordId();
+    const children = tableNode.children as any[];
+
+    if (!children || children.length === 0) {
+      return { tableId: tableRecordId };
+    }
+
+    const alignments = (tableNode.align as string[]) || [];
+    const rows = children as any[];
+
+    const columnIds: string[] = [];
+    const rowIds: string[] = [];
+    const columnSet: Record<string, { column_width: number }> = {};
+    const cellSet: Record<string, { block_id: string; merge_info: { row_span: number; col_span: number } }> = {};
+    const tableCellIds: string[] = [];
+
+    const numCols = alignments.length || rows[0]?.children?.length || 0;
+    const numRows = rows.length;
+
+    for (let i = 0; i < numCols; i++) {
+      const colId = `col${this.generateRandomId().replace(/-/g, '')}`;
+      columnIds.push(colId);
+      columnSet[colId] = { column_width: 200 };
+    }
+
+    for (let i = 0; i < numRows; i++) {
+      const rowId = `row${this.generateRandomId().replace(/-/g, '')}`;
+      rowIds.push(rowId);
+    }
+
+    const processRow = (rowIndex: number, rowCells: any[]) => {
+      const rowId = rowIds[rowIndex];
+      for (let colIndex = 0; colIndex < rowCells.length && colIndex < numCols; colIndex++) {
+        const colId = columnIds[colIndex];
+        const cellNode = rowCells[colIndex];
+        const cellRecordId = generateRecordId();
+
+        const cellTextSegments = this.parseInlineContent(cellNode.children || []);
+        const align = alignments[colIndex] || 'left';
+
+        this.recordMap[cellRecordId] = {
+          id: cellRecordId,
+          snapshot: {
+            type: 'table_cell',
+            parent_id: tableRecordId,
+            comments: [],
+            revisions: [],
+            locked: false,
+            hidden: false,
+            author: this.authorId,
+            children: [],
+            text: this.createTextData(cellTextSegments)
+          }
+        };
+
+        const textRecordId = generateRecordId();
+        this.recordMap[textRecordId] = {
+          id: textRecordId,
+          snapshot: {
+            type: 'text',
+            parent_id: cellRecordId,
+            comments: [],
+            revisions: [],
+            locked: false,
+            hidden: false,
+            author: this.authorId,
+            children: [],
+            text: this.createTextData(cellTextSegments),
+            folded: false,
+            align
+          }
+        };
+
+        this.recordMap[cellRecordId].snapshot.children.push(textRecordId);
+
+        const cellKey = `${rowId}${colId}`;
+        cellSet[cellKey] = {
+          block_id: cellRecordId,
+          merge_info: { row_span: 1, col_span: 1 }
+        };
+
+        tableCellIds.push(cellRecordId);
+      }
+    };
+
+    for (let i = 0; i < rows.length; i++) {
+      processRow(i, rows[i].children);
+    }
+
+    this.recordMap[tableRecordId] = {
+      id: tableRecordId,
+      snapshot: {
+        type: 'table',
+        parent_id: this.rootId,
+        comments: [],
+        revisions: [],
+        locked: false,
+        hidden: false,
+        author: this.authorId,
+        children: tableCellIds,
+        columns_id: columnIds,
+        rows_id: rowIds,
+        column_set: columnSet,
+        cell_set: cellSet
+      }
+    };
+
+    this.recordIds.push(tableRecordId);
+    this.blockIds.push(this.blockIds.length + 1);
+
+    return { tableId: tableRecordId };
   }
 }

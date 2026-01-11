@@ -5,7 +5,7 @@ export * from './clipboard/browserClipboard.js';
 export * from './file/fileOperations.js';
 export * from './parser/markdownParser.js';
 
-export function markdownToLark(markdown: string): any {
+export async function markdownToLark(markdown: string): Promise<any> {
   const converter = new MarkdownToLarkConverter();
   return converter.convert(markdown);
 }

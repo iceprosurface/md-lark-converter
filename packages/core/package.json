@@ -19,7 +19,7 @@
     "build": "tsc",
     "prepare": "pnpm build",
     "dev": "tsc --watch",
-    "test": "vitest src/tests/converter.test.ts"
+    "test": "vitest --run"
   },
   "keywords": [
     "markdown",
@@ -30,10 +30,18 @@
   "author": "nilibing",
   "license": "MIT",
   "dependencies": {
-    "marked": "^14.0.0"
+    "marked": "^14.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.0.0"
   },
   "devDependencies": {
+    "@types/marked": "^6.0.0",
+    "@types/mdast": "^4.0.4",
     "@types/node": "^20.0.0",
+    "mdast-util-math": "^3.0.0",
     "typescript": "^5.0.0",
     "vitest": "^2.1.9"
   }

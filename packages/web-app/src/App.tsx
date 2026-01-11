@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MarkdownToLarkConverter, ClipboardData, TextData, larkToMarkdown } from "@md-lark-converter/core";
+import { MarkdownToLarkConverter, ClipboardData, TextData, larkToMarkdown, generateHtml } from "@md-lark-converter/core";
 
 async function readClipboard() {
   try {
@@ -52,13 +52,20 @@ function App() {
   const [output, setOutput] = useState("");
   const [message, setMessage] = useState("");
 
-  const handleConvert = () => {
+  const handleConvert = async () => {
     try {
       if (mode === "md-to-lark") {
         const converter = new MarkdownToLarkConverter();
-        const result = converter.convert(input);
-        setOutput(JSON.stringify(result, null, 2));
-        setMessage("");
+        const result = await converter.convert(input);
+        const html = generateHtml(result);
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'text/html': new Blob([html], { type: 'text/html' }),
+            'text/plain': new Blob([input], { type: 'text/plain' })
+          })
+        ]);
+        setMessage("已转换为飞书文档格式并复制到剪贴板！");
+        setTimeout(() => setMessage(""), 3000);
       } else {
         const data = JSON.parse(input) as ClipboardData;
         const markdown = larkToMarkdown(data);
@@ -205,6 +212,36 @@ function App() {
             </div>
           )}
 
+          {mode === "md-to-lark" && (
+            <div className="flex flex-col items-center justify-center">
+              <div className="text-center mb-8">
+                <h3 className="text-xl font-medium text-gray-900 mb-2">转换为飞书文档格式</h3>
+                <p className="text-gray-600">点击下方按钮将 Markdown 转换为飞书格式并复制到剪贴板</p>
+              </div>
+              <button
+                onClick={handleConvert}
+                className="px-12 py-4 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors text-lg shadow-lg"
+              >
+                转换为飞书文档格式
+              </button>
+              <button
+                onClick={handleClear}
+                className="mt-4 px-6 py-2 text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                清空
+              </button>
+              <div className="mt-8 px-6 py-4 bg-green-50 border border-green-200 rounded-md text-sm text-green-800 max-w-md">
+                <p className="font-medium mb-3">如何使用：</p>
+                <ol className="space-y-2">
+                  <li>1. 输入或粘贴 Markdown 内容</li>
+                  <li>2. 点击上方"转换为飞书文档格式"按钮</li>
+                  <li>3. 内容已自动复制到剪贴板</li>
+                  <li>4. 打开飞书文档，按 Cmd/Ctrl + V 粘贴</li>
+                </ol>
+              </div>
+            </div>
+          )}
+
           {mode === "lark-to-md" && (
             <div className="flex flex-col">
               <div className="flex items-center justify-between mb-2">
@@ -234,41 +271,24 @@ function App() {
             </div>
           )}
 
-          <div className="flex flex-col">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-gray-700">
-                {mode === "md-to-lark" ? "Lark JSON 输出" : "Markdown 输出"}
-              </label>
-              <button onClick={handleCopy} className="text-sm text-gray-600 hover:text-gray-900">
-                复制
-              </button>
+          {mode === "lark-to-md" && (
+            <div className="flex flex-col">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-gray-700">Markdown 输出</label>
+                <button onClick={handleCopy} className="text-sm text-gray-600 hover:text-gray-900">
+                  复制
+                </button>
+              </div>
+              <textarea
+                value={output}
+                readOnly
+                placeholder="转换结果将显示在这里..."
+                className="flex-1 w-full p-4 border border-gray-300 rounded-lg resize-none bg-gray-50 text-gray-900 font-mono"
+                style={{ minHeight: "400px" }}
+              />
             </div>
-            <textarea
-              value={output}
-              readOnly
-              placeholder="转换结果将显示在这里..."
-              className="flex-1 w-full p-4 border border-gray-300 rounded-lg resize-none bg-gray-50 text-gray-900 font-mono"
-              style={{ minHeight: "400px" }}
-            />
-          </div>
+          )}
         </div>
-
-        {mode === "md-to-lark" && (
-          <div className="mt-6 flex items-center justify-between">
-            <button
-              onClick={handleConvert}
-              className="px-8 py-3 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
-            >
-              转换
-            </button>
-            <button
-              onClick={handleClear}
-              className="px-6 py-3 text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              清空
-            </button>
-          </div>
-        )}
 
         {message && (
           <div

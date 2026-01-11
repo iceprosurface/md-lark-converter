@@ -1,115 +1,6 @@
-#!/usr/bin/env node
+import { ClipboardData } from './index.js';
 
-import { program } from 'commander';
-import chalk from 'chalk';
-import { readFileSync, existsSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import { MarkdownToLarkConverter } from '@md-lark-converter/core';
-import clipboardy from 'clipboardy';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-interface Options {
-  output?: string;
-  stdin?: boolean;
-  copy?: boolean;
-  verbose?: boolean;
-}
-
-program
-  .name('md-to-lark')
-  .description('Convert Markdown to Lark (飞书) clipboard format')
-  .version('1.0.0')
-  .argument('[input]', 'Input markdown file path or stdin')
-  .option('-o, --output <file>', 'Output JSON file path')
-  .option('--stdin', 'Read from stdin')
-  .option('--copy', 'Copy to system clipboard directly')
-  .option('--verbose', 'Show detailed output')
-  .action((input: string, options: Options) => {
-    run(input, options);
-  });
-
-async function run(input: string, options: Options): Promise<void> {
-  try {
-    let markdown = '';
-
-    // Read input
-    if (options.stdin) {
-      if (options.verbose) {
-        console.log(chalk.yellow('Reading from stdin...'));
-      }
-      markdown = await readStdin();
-    } else if (input) {
-      if (options.verbose) {
-        console.log(chalk.yellow(`Reading from file: ${input}`));
-      }
-      if (!existsSync(input)) {
-        console.error(chalk.red(`Error: File not found: ${input}`));
-        process.exit(1);
-      }
-      markdown = readFileSync(input, 'utf-8');
-    } else {
-      console.error(chalk.red('Error: Please provide input file or use --stdin'));
-      program.help();
-      process.exit(1);
-    }
-
-    // Convert
-    if (options.verbose) {
-      console.log(chalk.yellow('Converting markdown to Lark format...'));
-    }
-    const converter = new MarkdownToLarkConverter();
-    const result = await converter.convert(markdown);
-
-    // Output
-    if (options.output) {
-      const { writeFileSync } = await import('fs');
-      writeFileSync(options.output, JSON.stringify(result, null, 2), 'utf-8');
-      if (options.verbose) {
-        console.log(chalk.green(`✓ Output written to: ${options.output}`));
-      }
-    } else if (options.copy) {
-      const html = generateLarkHtml(result);
-      await clipboardy.write(html);
-      if (options.verbose) {
-        console.log(chalk.green('✓ Copied HTML to clipboard! Paste directly to Lark document'));
-      } else {
-        console.log(chalk.green('✓ Copied to clipboard!'));
-      }
-    } else {
-      // Default: pretty print
-      console.log(JSON.stringify(result, null, 2));
-    }
-
-    if (options.verbose) {
-      console.log(chalk.green('✓ Conversion completed successfully!'));
-    }
-  } catch (error) {
-    console.error(chalk.red('Error:'), (error as Error).message);
-    if (options.verbose) {
-      console.error((error as Error).stack);
-    }
-    process.exit(1);
-  }
-}
-
-function readStdin(): Promise<string> {
-  return new Promise((resolve, reject) => {
-    let data = '';
-    process.stdin.setEncoding('utf-8');
-    process.stdin.on('data', (chunk: string) => {
-      data += chunk;
-    });
-    process.stdin.on('end', () => {
-      resolve(data);
-    });
-    process.stdin.on('error', reject);
-  });
-}
-
-function generateLarkHtml(data: any): string {
+export function generateHtml(data: ClipboardData): string {
   if (!data || !data.recordIds || !data.recordMap) {
     console.error('Invalid data structure:', data);
     return '';
@@ -137,8 +28,8 @@ function generateLarkHtml(data: any): string {
   return html;
 }
 
-function generateBlockHtml(snapshot: any, recordId: string): string {
-  const { type, text, code, language, level, data } = snapshot;
+export function generateBlockHtml(snapshot: any, recordId: string): string {
+  const { type, text, code, language, level, data, checked, children } = snapshot;
 
   switch (type) {
     case 'page':
@@ -204,6 +95,9 @@ function generateBlockHtml(snapshot: any, recordId: string): string {
       const listClass = isChecked ? 'list-done1' : 'list-check';
       return `<ul class="${listClass}"><li class="ace-line old-record-id-${recordId}" data-list="${isChecked ? 'done' : 'check'}"><div>${escapeHtml(todoText)}</div></li></ul>`;
 
+    case 'image':
+      return `<div class="ace-line old-record-id-${recordId}">[markdown-to-lark 暂无法支持图片转换]</div>`;
+
     default:
       return '';
   }
@@ -227,5 +121,3 @@ function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
-
-program.parse();
