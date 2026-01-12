@@ -29,6 +29,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.CHANGESET_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v3
@@ -58,7 +60,7 @@ jobs:
           commit: 'chore: version packages'
           title: 'chore: version packages'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.CHANGESET_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Manual Publish @md-lark-converter/core
         if: github.event_name == 'workflow_dispatch' && (github.event.inputs.package == 'core' || github.event.inputs.package == 'both')
