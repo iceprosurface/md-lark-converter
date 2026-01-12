@@ -1,3 +1,9 @@
 packages:
   - 'packages/*'
   - 'apps/*'
+
+changesets:
+  ignore:
+    - '@md-lark-converter/web-app'
+    - '@md-lark-converter/web-debug'
+    - 'md-lark-converter'

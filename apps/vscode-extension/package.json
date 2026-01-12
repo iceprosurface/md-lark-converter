@@ -1,6 +1,7 @@
 {
   "name": "md-lark-converter",
   "version": "1.0.0",
+  "private": true,
   "description": "Markdown to Lark (飞书) converter - VSCode extension",
   "publisher": "iceprosurface",
   "displayName": "Markdown to Lark Converter",

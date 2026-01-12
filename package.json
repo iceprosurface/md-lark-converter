@@ -11,7 +11,7 @@
     "lint": "oxlint",
     "changeset": "changeset",
     "version": "changeset version",
-    "release": "pnpm build && changeset publish"
+    "release": "pnpm build && pnpm exec changeset publish"
   },
   "keywords": [
     "markdown",

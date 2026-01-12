@@ -1,6 +1,7 @@
 {
   "name": "@md-lark-converter/web-app",
   "version": "1.0.0",
+  "private": true,
   "description": "Simple web app for Markdown to Lark converter - User facing",
   "type": "module",
   "scripts": {

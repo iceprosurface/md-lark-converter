@@ -1,6 +1,7 @@
 {
   "name": "@md-lark-converter/web-debug",
   "version": "1.0.0",
+  "private": true,
   "description": "Web UI for Markdown to Lark converter",
   "type": "module",
   "scripts": {
