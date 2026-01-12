@@ -2,23 +2,23 @@
   "name": "@md-lark-converter/core",
   "version": "1.0.0",
   "description": "Core conversion logic for Markdown to Lark",
-  "type": "module",
   "main": "./dist/index.js",
-  "module": "./dist/index.js",
+  "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsup",
     "prepare": "pnpm build",
-    "dev": "tsc --watch",
+    "dev": "tsup --watch",
     "test": "vitest --run"
   },
   "keywords": [
@@ -27,7 +27,16 @@
     "feishu",
     "converter"
   ],
-  "author": "nilibing",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iceprosurface/md-lark-converter.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/iceprosurface/md-lark-converter/issues"
+  },
+  "homepage": "https://github.com/iceprosurface/md-lark-converter#readme",
+  "author": "icepro",
   "license": "MIT",
   "dependencies": {
     "marked": "^14.0.0",
@@ -42,6 +51,7 @@
     "@types/mdast": "^4.0.4",
     "@types/node": "^20.0.0",
     "mdast-util-math": "^3.0.0",
+    "tsup": "^8.5.1",
     "typescript": "^5.0.0",
     "vitest": "^2.1.9"
   }

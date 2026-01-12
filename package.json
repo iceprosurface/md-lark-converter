@@ -17,6 +17,14 @@
     "converter",
     "clipboard"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iceprosurface/md-lark-converter.git"
+  },
+  "bugs": {
+    "url": "https://github.com/iceprosurface/md-lark-converter/issues"
+  },
+  "homepage": "https://github.com/iceprosurface/md-lark-converter#readme",
   "author": "icepro",
   "license": "MIT",
   "engines": {
