@@ -1,8 +1,9 @@
 name: Publish VSCode Extension
 
 on:
-  release:
-    types: [published]
+  # Temporarily disabled - configure VSCE_TOKEN before enabling
+  # release:
+  #   types: [published]
   workflow_dispatch:
 
 jobs:
