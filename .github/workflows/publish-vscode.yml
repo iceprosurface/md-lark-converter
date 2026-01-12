@@ -1,0 +1,48 @@
+name: Publish VSCode Extension
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build core package
+        run: pnpm --filter @md-lark-converter/core build
+
+      - name: Build VSCode extension
+        working-directory: apps/vscode-extension
+        run: pnpm build
+
+      - name: Install vsce
+        run: pnpm add -g @vscode/vsce
+
+      - name: Package extension
+        working-directory: apps/vscode-extension
+        run: vsce package
+
+      - name: Publish to VSCode Marketplace
+        working-directory: apps/vscode-extension
+        run: vsce publish -p ${{ secrets.VSCE_TOKEN }}
+        env:
+          VSCE_TOKEN: ${{ secrets.VSCE_TOKEN }}
