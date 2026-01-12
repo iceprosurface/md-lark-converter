@@ -2,7 +2,7 @@
   "name": "md-lark-converter",
   "version": "1.0.0",
   "description": "Markdown to Lark (飞书) converter - VSCode extension",
-  "publisher": "icepro",
+  "publisher": "iceprosurface",
   "displayName": "Markdown to Lark Converter",
   "engines": {
     "vscode": "^1.90.0"
@@ -44,9 +44,10 @@
     }
   },
   "scripts": {
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "build": "tsc -p ./"
+    "compile": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "build": "node esbuild.js --production",
+    "package": "pnpm build && vsce package --no-dependencies"
   },
   "repository": {
     "type": "git",
@@ -65,6 +66,7 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.90.0",
+    "esbuild": "^0.27.2",
     "typescript": "^5.0.0"
   }
 }
