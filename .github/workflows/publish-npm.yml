@@ -1,25 +1,29 @@
-name: Publish NPM Packages
+name: Release & Publish
 
 on:
-  release:
-    types: [published]
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       package:
-        description: 'Package to publish'
-        required: true
+        description: 'Package to publish (manual override)'
+        required: false
         type: choice
         options:
           - core
           - cli
           - both
 
-jobs:
-  publish:
-    runs-on: ubuntu-latest
+concurrency: ${{ github.workflow }}-${{ github.ref }}
 
+jobs:
+  release:
+    name: Release & Publish
+    runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
+      pull-requests: write
       id-token: write
 
     steps:
@@ -44,12 +48,24 @@ jobs:
       - name: Build packages
         run: pnpm build
 
-      - name: Publish @md-lark-converter/core
-        if: github.event_name == 'release' || github.event.inputs.package == 'core' || github.event.inputs.package == 'both'
+      - name: Create Release Pull Request or Publish to npm
+        if: github.event_name == 'push'
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          publish: pnpm exec changeset publish --provenance
+          version: pnpm version
+          commit: 'chore: version packages'
+          title: 'chore: version packages'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Manual Publish @md-lark-converter/core
+        if: github.event_name == 'workflow_dispatch' && (github.event.inputs.package == 'core' || github.event.inputs.package == 'both')
         working-directory: packages/core
         run: pnpm publish --no-git-checks --access public --provenance
 
-      - name: Publish @md-lark-converter/cli
-        if: github.event_name == 'release' || github.event.inputs.package == 'cli' || github.event.inputs.package == 'both'
+      - name: Manual Publish @md-lark-converter/cli
+        if: github.event_name == 'workflow_dispatch' && (github.event.inputs.package == 'cli' || github.event.inputs.package == 'both')
         working-directory: packages/cli
         run: pnpm publish --no-git-checks --access public --provenance
