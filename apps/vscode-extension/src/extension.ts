@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { MarkdownToLarkConverter, larkToMarkdown, ClipboardData, generateHtml, writeHtmlToClipboard } from '@md-lark-converter/core';
+import { MarkdownToLarkConverter, larkToMarkdown, ClipboardData, generateHtml } from '@md-lark-converter/core';
+import { writeHtmlToClipboard } from '@md-lark-converter/core/node';
 
 export function activate(context: vscode.ExtensionContext) {
   console.log('Markdown to Lark Converter is now active!');

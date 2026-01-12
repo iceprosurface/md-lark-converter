@@ -5,7 +5,8 @@ import chalk from 'chalk';
 import { readFileSync, existsSync, writeFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { MarkdownToLarkConverter, generateHtml, writeHtmlToClipboard } from '@md-lark-converter/core';
+import { MarkdownToLarkConverter, generateHtml } from '@md-lark-converter/core';
+import { writeHtmlToClipboard } from '@md-lark-converter/core/node';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

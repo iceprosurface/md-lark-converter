@@ -10,6 +10,11 @@
       "types": "./dist/index.d.ts",
       "require": "./dist/index.js",
       "import": "./dist/index.mjs"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "require": "./dist/node.js",
+      "import": "./dist/node.mjs"
     }
   },
   "files": [

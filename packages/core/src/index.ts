@@ -4,7 +4,6 @@ export { MarkdownToLarkConverter } from "./converter/markdownToLark.js";
 export { generateBlockId, generateRecordId, generatePageId } from "./utils/idGenerator.js";
 export { parseMarkdown } from "./parser/markdownParser.js";
 export { writeToClipboard, readClipboard } from "./clipboard/browserClipboard.js";
-export { writeHtmlToClipboard } from "./clipboard/richClipboard.js";
 export { generateHtml, generateBlockHtml } from "./htmlGenerator.js";
 
 export interface ClipboardData {
