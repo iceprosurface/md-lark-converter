@@ -9,9 +9,10 @@
     "dev:debug": "pnpm --filter web dev",
     "test": "pnpm -r test",
     "lint": "oxlint",
+    "verify:publish-manifests": "node scripts/verify-packed-manifests.mjs",
     "changeset": "changeset",
     "version": "changeset version",
-    "release": "pnpm build && pnpm exec changeset publish"
+    "release": "pnpm build && pnpm verify:publish-manifests && pnpm exec changeset publish"
   },
   "keywords": [
     "markdown",
