@@ -1,47 +1,52 @@
-# Markdown to Lark Converter
+# Markdown 转飞书文档转换器
+
+[![English](https://img.shields.io/badge/Language-English-1f6feb.svg)](./README.md)
+[![简体中文](https://img.shields.io/badge/%E8%AF%AD%E8%A8%80-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-12b886.svg)](./README.zh.md)
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)
 
-Convert Markdown content to Lark (Feishu) document clipboard format with support for direct pasting. Compatible with OpenCode and Claude Code.
+将 Markdown 内容转换为飞书文档剪贴板格式，支持直接粘贴到飞书文档中。兼容 OpenCode 和 Claude Code。
 
-## Features
+## 功能特性
 
-- ✅ **Complete Markdown Support**: Headings, lists, quotes, code blocks, Mermaid charts, and more
-- ✅ **Multiple Usage Methods**: CLI tools, Web interface, VSCode extension
-- ✅ **Clipboard Friendly**: One-click copy, paste directly to Lark documents
-- ✅ **IDE Integration**: Supports OpenCode, Claude Code, VSCode, Cursor
-- ✅ **Monorepo Architecture**: Reusable core logic, easy to maintain and extend
+- ✅ **完整支持 Markdown**：标题、列表、引用、代码块、Mermaid 图表等
+- ✅ **多种使用方式**：CLI 工具、Web 界面、VSCode 扩展
+- ✅ **对剪贴板友好**：一键复制，可直接粘贴到飞书文档
+- ✅ **IDE 集成**：支持 OpenCode、Claude Code、VSCode、Cursor
+- ✅ **Monorepo 架构**：核心逻辑可复用，易于维护和扩展
 
-## Supported Markdown Syntax
+## 支持的 Markdown 语法
 
-| Syntax | Example | Description |
+| 语法 | 示例 | 说明 |
 |--------|----------|-------------|
-| Headings | `# Heading` | Supports 1-6 level headings |
-| Bold | `**bold**` | Bold text |
-| Italic | `*italic*` | Italic text |
-| Strikethrough | `~~strike~~` | Strikethrough text |
-| Code | `` `code` `` | Inline code |
-| Code blocks | ```javascript``` | Code blocks (with syntax highlighting) |
-| Mermaid charts | ```mermaid``` | Flowcharts, sequence diagrams, etc. |
-| Quotes | `> quote` | Quote blocks |
-| Unordered lists | `- item` | Unordered lists (multi-level supported) |
-| Ordered lists | `1. item` | Ordered lists (multi-level supported) |
-| Task lists | `- [x] done` | Task lists |
-| Horizontal rule | `---` | Horizontal divider |
+| 标题 | `# Heading` | 支持 1-6 级标题 |
+| 粗体 | `**bold**` | 粗体文本 |
+| 斜体 | `*italic*` | 斜体文本 |
+| 删除线 | `~~strike~~` | 删除线文本 |
+| 行内代码 | `` `code` `` | 行内代码 |
+| 代码块 | ```javascript``` | 代码块（支持语法高亮） |
+| Mermaid 图表 | ```mermaid``` | 流程图、时序图等 |
+| 引用 | `> quote` | 引用块 |
+| 无序列表 | `- item` | 无序列表（支持多级） |
+| 有序列表 | `1. item` | 有序列表（支持多级） |
+| 任务列表 | `- [x] done` | 任务列表 |
+| 分割线 | `---` | 水平分隔线 |
 
-## Installation
+## 安装
 
-### Global CLI Install
+### 全局安装 CLI
 
 ```bash
 npm install -g @md-lark-converter/cli
-# or using pnpm
+# 或使用 pnpm
 pnpm install -g @md-lark-converter/cli
 ```
 
-### Local Development
+> 如果全局安装时报 `ERR_PNPM_WORKSPACE_PKG_NOT_FOUND`，请升级到包含修复的最新 CLI 版本；也可以直接在仓库中执行 `pnpm install`、`pnpm build`，再通过 `pnpm --filter @md-lark-converter/cli start -- input.md` 运行 CLI。
+
+### 本地开发
 
 ```bash
 git clone https://github.com/iceprosurface/md-lark-converter.git
@@ -49,108 +54,108 @@ cd md-lark-converter
 pnpm install
 ```
 
-## Usage
+## 使用方式
 
-### CLI Tool
+### CLI 工具
 
-#### Convert Files
+#### 转换文件
 
 ```bash
-# Convert Markdown file
+# 转换 Markdown 文件
 md-to-lark input.md
 
-# Save as JSON file
+# 保存为 JSON 文件
 md-to-lark input.md -o output.json
 
-# Read from stdin
+# 从标准输入读取
 echo "# Heading" | md-to-lark --stdin
 
-# Copy to clipboard (OpenCode/Claude Code friendly)
+# 复制到剪贴板（适配 OpenCode / Claude Code）
 md-to-lark input.md --copy
 ```
 
-#### Verbose Output
+#### 输出详细日志
 
 ```bash
 md-to-lark input.md --verbose
 ```
 
-### Web Interface
+### Web 界面
 
-#### Simple Version (For Users)
+#### 简洁版（面向普通用户）
 
 ```bash
 pnpm dev
 ```
 
-Visit http://localhost:5173
+访问 http://localhost:5173
 
-**Features**:
-- Markdown ↔ Lark bidirectional conversion
-- Clean minimalist interface
-- One-click copy/paste to clipboard
-- Suitable for Vercel deployment
+**功能**：
+- Markdown ↔ 飞书 双向转换
+- 简洁清爽的界面
+- 一键复制 / 粘贴到剪贴板
+- 适合部署到 Vercel
 
-#### Debug Version (For Developers)
+#### 调试版（面向开发者）
 
 ```bash
 pnpm dev:debug
 ```
 
-Visit http://localhost:5174
+访问 http://localhost:5174
 
-**Features**:
-- Complete conversion debug info
-- Clipboard data comparison
-- Real-time preview
-- Suitable for development and testing
+**功能**：
+- 完整的转换调试信息
+- 剪贴板数据对比
+- 实时预览
+- 适合开发与测试
 
-### VSCode Extension
+### VSCode 扩展
 
-1. Install extension (search "Markdown to Lark Converter" in marketplace)
-2. Open Markdown file
-3. Use shortcut `Ctrl+Shift+L` (Windows/Linux) or `Cmd+Shift+L` (Mac)
-4. Or right-click menu and select "Convert Markdown to Lark (飞书)"
-5. Paste in Lark document
+1. 安装扩展（在扩展市场中搜索 `Markdown to Lark Converter`）
+2. 打开 Markdown 文件
+3. 使用快捷键 `Ctrl+Shift+L`（Windows/Linux）或 `Cmd+Shift+L`（Mac）
+4. 或通过右键菜单选择 `Convert Markdown to Lark (飞书)`
+5. 在飞书文档中粘贴
 
 ### OpenCode / Claude Code
 
-Use CLI tool in IDE:
+在 IDE 中使用 CLI 工具：
 
 ```bash
-# Convert current file
+# 转换当前文件
 md-to-lark current.md --copy
 
-# Convert selected content (need to save first)
-# Copy output to clipboard, then paste to Lark document
+# 转换选中内容（需要先保存）
+# 将输出复制到剪贴板后，再粘贴到飞书文档
 ```
 
-## Project Structure
+## 项目结构
 
 ```
 md-lark-converter/
 ├── packages/
-│   ├── core/           # Core conversion logic (shared)
+│   ├── core/           # 核心转换逻辑（可复用）
 │   │   ├── lib/
 │   │   │   ├── converter/
-│   │   │   │   └── markdownToLark.ts  # Markdown → Lark Block conversion
+│   │   │   │   └── markdownToLark.ts  # Markdown -> 飞书 Block 转换
 │   │   │   └── utils/
-│   │   │       └── idGenerator.ts       # ID generator
+│   │   │       └── idGenerator.ts      # ID 生成器
 │   │   └── index.ts
-│   ├── cli/            # Command line tool
+│   ├── cli/            # 命令行工具
 │   │   └── index.ts
-│   ├── web-app/        # Web simple version (for users + Vercel deployment)
-│   │   ├── src/App.tsx # Bidirectional conversion + clean UI
+│   ├── web-app/        # Web 简洁版（用户使用 + Vercel 部署）
+│   │   ├── src/App.tsx # 双向转换 + 简洁 UI
 │   │   ├── index.html
 │   │   └── vite.config.ts
-│   └── web-debug/      # Web Debug version (for developers)
+│   └── web-debug/      # Web 调试版（开发者使用）
 │       ├── src/
 │       │   ├── App.tsx
 │       │   └── components/DebugComparison.tsx
 │       ├── index.html
 │       └── vite.config.ts
 ├── apps/
-│   └── vscode-extension/  # VSCode extension
+│   └── vscode-extension/  # VSCode 扩展
 │       ├── src/
 │       │   └── extension.ts
 │       └── package.json
@@ -158,16 +163,16 @@ md-lark-converter/
 └── pnpm-workspace.yaml
 ```
 
-## Core Conversion Logic
+## 核心转换逻辑
 
-### Conversion Process
+### 转换流程
 
-1. **Parse Markdown**: Use marked library to parse Markdown into tokens
-2. **Map Block Types**: Map Markdown tokens to Lark block types
-3. **Generate Data Structure**: Build recordMap, blockIds, recordIds
-4. **Generate Clipboard Data**: Package as data-lark-record-data format
+1. **解析 Markdown**：使用 `marked` 库将 Markdown 解析为 token
+2. **映射块类型**：将 Markdown token 映射为飞书 block 类型
+3. **生成数据结构**：构建 `recordMap`、`blockIds`、`recordIds`
+4. **生成剪贴板数据**：封装为 `data-lark-record-data` 格式
 
-### Lark Data Structure
+### 飞书数据结构
 
 ```json
 {
@@ -190,59 +195,59 @@ md-lark-converter/
 }
 ```
 
-## Development
+## 开发
 
-### Install Dependencies
+### 安装依赖
 
 ```bash
 pnpm install
 ```
 
-### Run Tests
+### 运行测试
 
 ```bash
-# Test core package
+# 测试 core 包
 pnpm --filter @md-lark-converter/core test
 
-# Test CLI
+# 测试 CLI
 pnpm --filter @md-lark-converter/cli start
 
-# Run web dev server
+# 启动 Web 开发服务器
 pnpm dev
 ```
 
-### Build
+### 构建
 
 ```bash
-# Build all packages
+# 构建所有包
 pnpm build
 
-# Build specific package
+# 构建指定包
 pnpm --filter @md-lark-converter/web-app build
 ```
 
-### Lint
+### 代码检查
 
 ```bash
 pnpm lint
 ```
 
-## Extension Development
+## 扩展开发
 
-### Adding New Markdown Syntax Support
+### 新增 Markdown 语法支持
 
-1. Add new token type handling in `convertToken` method in `packages/core/lib/converter/markdownToLark.ts`
-2. Implement block data generation logic in corresponding `createXXXBlock` method
+1. 在 `packages/core/lib/converter/markdownToLark.ts` 的 `convertToken` 方法中新增对应 token 类型处理
+2. 在对应的 `createXXXBlock` 方法中实现 block 数据生成逻辑
 
-### Adding New IDE Support
+### 新增 IDE 支持
 
-Reference `apps/vscode-extension` implementation, use `MarkdownToLarkConverter` class provided by `@md-lark-converter/core` package.
+参考 `apps/vscode-extension` 的实现，使用 `@md-lark-converter/core` 包提供的 `MarkdownToLarkConverter` 类。
 
-## Deployment
+## 部署
 
-### Vercel (Web Version)
+### Vercel（Web 版本）
 
-#### Simple Version (For Users)
+#### 简洁版（面向普通用户）
 
 ```bash
 cd packages/web-app
@@ -250,7 +255,7 @@ pnpm build
 vercel deploy
 ```
 
-#### Debug Version (For Developers)
+#### 调试版（面向开发者）
 
 ```bash
 cd packages/web-debug
@@ -266,55 +271,55 @@ vsce package
 vsce publish
 ```
 
-### npm Publish
+### 发布到 npm
 
 ```bash
-# Publish CLI
+# 发布 CLI
 pnpm --filter @md-lark-converter/cli publish
 
-# Publish Core
+# 发布 Core
 pnpm --filter @md-lark-converter/core publish
 ```
 
-## Notes
+## 注意事项
 
-- **Compatibility**: Supports Node.js >= 18.0.0
-- **Lark Format**: Current version supports Lark document clipboard format
-- **Text Formatting**: Supports basic formats, complex apool attribute format is being refined
-- **Image Handling**: Image links are preserved but cannot be automatically uploaded to Lark
+- **兼容性**：支持 Node.js >= 18.0.0
+- **飞书格式**：当前版本支持飞书文档剪贴板格式
+- **文本格式**：支持基础文本格式，复杂的 `apool` 属性格式仍在持续完善
+- **图片处理**：会保留图片链接，但暂不支持自动上传到飞书
 
-## FAQ
+## 常见问题
 
-### Q: Why doesn't it render after pasting?
+### 问：为什么粘贴后没有正确渲染？
 
-A: Ensure the JSON data structure is complete, especially `text.apool` and `text.initialAttributedTexts` fields.
+答：请确认 JSON 数据结构完整，尤其是 `text.apool` 和 `text.initialAttributedTexts` 字段。
 
-### Q: Mermaid charts not showing?
+### 问：为什么 Mermaid 图表没有显示？
 
-A: Lark takes time to render Mermaid charts, please wait a few seconds.
+答：飞书渲染 Mermaid 图表需要一点时间，请稍等几秒。
 
-### Q: How to support custom ID generation?
+### 问：如何支持自定义 ID 生成？
 
-A: Modify generation logic in `packages/core/lib/utils/idGenerator.ts`.
+答：可修改 `packages/core/lib/utils/idGenerator.ts` 中的生成逻辑。
 
-## Tech Stack
+## 技术栈
 
-- **Core Logic**: TypeScript (ES Modules)
-- **Markdown Parsing**: marked
-- **CLI Framework**: commander
-- **Web Framework**: React 19 + Vite
-- **Styling**: Tailwind CSS
-- **Package Manager**: pnpm (Workspace)
-- **VSCode Extension**: TypeScript
+- **核心逻辑**：TypeScript（ES Modules）
+- **Markdown 解析**：marked
+- **CLI 框架**：commander
+- **Web 框架**：React 19 + Vite
+- **样式方案**：Tailwind CSS
+- **包管理器**：pnpm（Workspace）
+- **VSCode 扩展**：TypeScript
 
-## License
+## 许可证
 
 MIT
 
-## Author
+## 作者
 
 icepro
 
-## Acknowledgments
+## 致谢
 
-Thanks to [Lark](https://www.feishu.cn) for providing the excellent document editor.
+感谢 [Lark](https://www.feishu.cn) 提供优秀的文档编辑器。

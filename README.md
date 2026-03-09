@@ -1,5 +1,8 @@
 # Markdown to Lark Converter
 
+[![English](https://img.shields.io/badge/Language-English-1f6feb.svg)](./README.md)
+[![简体中文](https://img.shields.io/badge/%E8%AF%AD%E8%A8%80-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-12b886.svg)](./README.zh.md)
+
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)
@@ -40,6 +43,8 @@ npm install -g @md-lark-converter/cli
 # or using pnpm
 pnpm install -g @md-lark-converter/cli
 ```
+
+> If global install fails with `ERR_PNPM_WORKSPACE_PKG_NOT_FOUND`, upgrade to the latest CLI release that includes the packaging fix. You can also run the CLI from this repo with `pnpm install`, `pnpm build`, and `pnpm --filter @md-lark-converter/cli start -- input.md`.
 
 ### Local Development
 
