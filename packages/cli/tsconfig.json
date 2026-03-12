@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM"],
     "moduleResolution": "bundler",
     "outDir": "./dist",
     "rootDir": "./",
@@ -16,6 +16,6 @@
     "resolveJsonModule": true,
     "moduleDetection": "force"
   },
-  "include": ["index.ts"],
+  "include": ["md2fs.ts", "fs2md.ts", "feishuFetcher.ts"],
   "exclude": ["node_modules", "dist"]
 }
