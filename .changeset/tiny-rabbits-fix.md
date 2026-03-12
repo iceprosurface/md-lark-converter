@@ -1,4 +1,6 @@
 ---
+'@md-lark-converter/core': patch
+'@md-lark-converter/cli': patch
 ---
 
 Upgrade the repository and GitHub Actions workflows to pnpm 10 so frozen installs use a lockfile format that matches CI.
