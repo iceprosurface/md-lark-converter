@@ -1,5 +1,17 @@
 # @md-lark-converter/core
 
+## 1.2.0
+
+### Minor Changes
+
+- f1bb504: feat: support image block conversion in larkToMarkdown with automatic download
+
+  - Add `LarkToMarkdownOptions` with `imageResolver` callback to `larkToMarkdown()`
+  - Add `@md-lark-converter/core/image` entry point with `extractImageTokens` and `downloadAllImages`
+  - Extend `BlockSnapshot` with `image` field matching Feishu API structure
+  - fs2md CLI now downloads images to local `images/` directory during conversion
+  - Add `--no-images` flag to skip image downloading
+
 ## 1.1.1
 
 ### Patch Changes
