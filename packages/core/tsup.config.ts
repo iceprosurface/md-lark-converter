@@ -5,6 +5,7 @@ export default defineConfig({
     index: 'src/index.ts',
     node: 'src/node.ts',
     feishu: 'src/feishuFetcher.ts',
+    image: 'src/imageDownloader.ts',
   },
   format: ['cjs', 'esm'],
   dts: true,

@@ -3,13 +3,16 @@
 import { program } from 'commander';
 import chalk from 'chalk';
 import { writeFileSync } from 'fs';
+import { dirname, join } from 'path';
 import { larkToMarkdown } from '@md-lark-converter/core';
 import { fetchFeishuDocument } from '@md-lark-converter/core/feishu';
+import { extractImageTokens, downloadAllImages } from '@md-lark-converter/core/image';
 
 interface Options {
   output?: string;
   cookie?: string;
   verbose?: boolean;
+  images?: boolean;
 }
 
 program
@@ -19,9 +22,10 @@ program
   .argument('<url>', 'Feishu document URL')
   .option('-o, --output <file>', 'Save Markdown to file (default: copy to clipboard)')
   .option('--cookie <cookie>', 'Feishu session cookie string')
+  .option('--no-images', 'Skip downloading images')
   .option('--verbose', 'Show detailed output')
-  .action((url: string, options: Options) => {
-    run(url, options);
+  .action(async (url: string, options: Options) => {
+    await run(url, options);
   });
 
 async function run(url: string, options: Options): Promise<void> {
@@ -35,7 +39,36 @@ async function run(url: string, options: Options): Promise<void> {
       verbose: options.verbose,
     });
 
-    const markdown = larkToMarkdown(clipboardData);
+    // Download images if enabled
+    let imagePathMap = new Map<string, string>();
+    const shouldDownloadImages = options.images !== false;
+
+    if (shouldDownloadImages) {
+      const images = extractImageTokens(clipboardData);
+      if (images.length > 0) {
+        const outputDir = options.output
+          ? join(dirname(options.output), 'images')
+          : join(process.cwd(), 'images');
+        const domain = new URL(url).origin;
+        const cookie = options.cookie || process.env.FEISHU_COOKIE || '';
+
+        console.log(chalk.yellow(`Found ${images.length} image(s), downloading...`));
+        imagePathMap = await downloadAllImages(images, {
+          cookie,
+          domain,
+          outputDir,
+          verbose: options.verbose,
+        });
+        console.log(chalk.green(`✓ Downloaded ${imagePathMap.size} image(s) to ${outputDir}`));
+      }
+    }
+
+    const markdown = larkToMarkdown(clipboardData, {
+      imageResolver: (token) => {
+        const filename = imagePathMap.get(token);
+        return filename ? `./images/${filename}` : token;
+      },
+    });
 
     if (options.output) {
       writeFileSync(options.output, markdown, 'utf-8');

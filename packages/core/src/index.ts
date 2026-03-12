@@ -102,6 +102,29 @@ export interface BlockSnapshot {
   rows_id?: string[];
   column_set?: Record<string, { column_width: number }>;
   cell_set?: Record<string, { block_id: string; merge_info: { row_span: number; col_span: number } }>;
+  image?: {
+    token: string;
+    width: number;
+    height: number;
+    mimeType: string;
+    name?: string;
+    size?: number;
+    scale?: number;
+    rotation?: number;
+    crop?: number[];
+    caption?: {
+      text: {
+        initialAttributedTexts: {
+          text: Record<string, string> | null;
+          attribs: Record<string, string> | null;
+        };
+        apool: {
+          numToAttrib: Record<string, unknown> | null;
+          nextNum: number;
+        };
+      };
+    };
+  };
 }
 
 export interface TextData {
@@ -123,7 +146,12 @@ export async function markdownToLark(markdown: string): Promise<ClipboardData> {
   return converter.convert(markdown);
 }
 
-export function larkToMarkdown(data: ClipboardData): string {
+export interface LarkToMarkdownOptions {
+  /** Resolve an image token to a Markdown-usable path/URL. */
+  imageResolver?: (token: string, meta: { width?: number; height?: number; mimeType?: string; name?: string }) => string;
+}
+
+export function larkToMarkdown(data: ClipboardData, options?: LarkToMarkdownOptions): string {
   if (!data || !data.recordMap) {
     return '';
   }
@@ -249,7 +277,17 @@ export function larkToMarkdown(data: ClipboardData): string {
       }
 
       case 'image': {
-        result.push('[lark-to-markdown 暂无法支持图片转换]');
+        const img = snapshot.image;
+        if (img?.token) {
+          const resolver = options?.imageResolver;
+          const src = resolver
+            ? resolver(img.token, { width: img.width, height: img.height, mimeType: img.mimeType, name: img.name })
+            : img.token;
+          const altText = img.caption?.text?.initialAttributedTexts?.text?.['0'] || '';
+          result.push(`![${altText}](${src})`);
+        } else {
+          result.push('<!-- image: token not found -->');
+        }
         break;
       }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MarkdownToLarkConverter, markdownToLark, larkToMarkdown } from '@md-lark-converter/core';
+import { MarkdownToLarkConverter, markdownToLark, larkToMarkdown, type ClipboardData } from '@md-lark-converter/core';
 
 describe('markdownToLarkConverter', () => {
   it('should convert heading to lark format', async () => {
@@ -234,6 +234,115 @@ describe('larkToMarkdown', () => {
 
       const secondItem = topLevelItems[1].record;
       expect(secondItem.snapshot.children.length).toBe(0);
+    });
+  });
+
+  describe('image blocks', () => {
+    function makeImageClipboardData(imageFields: Record<string, unknown>): ClipboardData {
+      return {
+        isCut: false,
+        rootId: 'root',
+        parentId: 'root',
+        blockIds: [],
+        recordIds: ['img1'],
+        recordMap: {
+          root: {
+            id: 'root',
+            snapshot: {
+              type: 'page',
+              parent_id: '',
+              comments: null,
+              revisions: null,
+              locked: false,
+              hidden: false,
+              author: '1',
+              children: ['img1'],
+            },
+          },
+          img1: {
+            id: 'img1',
+            snapshot: {
+              type: 'image',
+              parent_id: 'root',
+              comments: null,
+              revisions: null,
+              locked: false,
+              hidden: false,
+              author: '1',
+              children: [],
+              image: {
+                token: 'boxcnTestToken123',
+                width: 800,
+                height: 600,
+                mimeType: 'image/png',
+                name: 'test.png',
+                size: 12345,
+                scale: 1,
+                rotation: 0,
+                crop: [0, 0, 0, 0],
+                caption: {
+                  text: {
+                    initialAttributedTexts: { text: null, attribs: null },
+                    apool: { numToAttrib: null, nextNum: 0 },
+                  },
+                },
+                ...imageFields,
+              },
+            },
+          },
+        } as any,
+        payloadMap: {},
+        extra: { channel: '', pasteRandomId: '', mention_page_title: {}, external_mention_url: {}, isEqualBlockSelection: false },
+        isKeepQuoteContainer: false,
+        selection: [],
+        pasteFlag: '',
+      };
+    }
+
+    it('should convert image block with imageResolver', () => {
+      const data = makeImageClipboardData({});
+      const result = larkToMarkdown(data, {
+        imageResolver: (token) => `./images/${token}.png`,
+      });
+      expect(result).toBe('![](./images/boxcnTestToken123.png)');
+    });
+
+    it('should use token as src when no imageResolver provided', () => {
+      const data = makeImageClipboardData({});
+      const result = larkToMarkdown(data);
+      expect(result).toBe('![](boxcnTestToken123)');
+    });
+
+    it('should use caption as alt text', () => {
+      const data = makeImageClipboardData({
+        caption: {
+          text: {
+            initialAttributedTexts: { text: { '0': '这是图片描述' }, attribs: { '0': '*0+6' } },
+            apool: { numToAttrib: { '0': ['author', '1'] }, nextNum: 1 },
+          },
+        },
+      });
+      const result = larkToMarkdown(data, {
+        imageResolver: (token) => `./images/${token}.png`,
+      });
+      expect(result).toBe('![这是图片描述](./images/boxcnTestToken123.png)');
+    });
+
+    it('should pass image metadata to resolver', () => {
+      const data = makeImageClipboardData({});
+      let receivedMeta: any;
+      larkToMarkdown(data, {
+        imageResolver: (token, meta) => {
+          receivedMeta = meta;
+          return token;
+        },
+      });
+      expect(receivedMeta).toEqual({
+        width: 800,
+        height: 600,
+        mimeType: 'image/png',
+        name: 'test.png',
+      });
     });
   });
 
