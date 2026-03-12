@@ -16,6 +16,6 @@
     "resolveJsonModule": true,
     "moduleDetection": "force"
   },
-  "include": ["md2fs.ts", "fs2md.ts", "feishuFetcher.ts"],
+  "include": ["md2fs.ts", "fs2md.ts"],
   "exclude": ["node_modules", "dist"]
 }

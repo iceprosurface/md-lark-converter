@@ -4,7 +4,7 @@ import { program } from 'commander';
 import chalk from 'chalk';
 import { writeFileSync } from 'fs';
 import { larkToMarkdown } from '@md-lark-converter/core';
-import { fetchFeishuDocument } from './feishuFetcher.js';
+import { fetchFeishuDocument } from '@md-lark-converter/core/feishu';
 
 interface Options {
   output?: string;

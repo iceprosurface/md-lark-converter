@@ -1,7 +1,7 @@
 import { readFileSync, existsSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
-import type { ClipboardData } from '@md-lark-converter/core';
+import type { ClipboardData } from './index.js';
 
 const CONFIG_PATH = join(homedir(), '.md-lark-converter.json');
 
