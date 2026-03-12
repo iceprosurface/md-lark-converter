@@ -20,6 +20,11 @@
       "types": "./dist/feishu.d.ts",
       "require": "./dist/feishu.js",
       "import": "./dist/feishu.mjs"
+    },
+    "./image": {
+      "types": "./dist/image.d.ts",
+      "require": "./dist/image.js",
+      "import": "./dist/image.mjs"
     }
   },
   "files": [
