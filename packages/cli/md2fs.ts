@@ -3,13 +3,8 @@
 import { program } from 'commander';
 import chalk from 'chalk';
 import { readFileSync, existsSync, writeFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 import { MarkdownToLarkConverter, generateHtml } from '@md-lark-converter/core';
 import { writeHtmlToClipboard } from '@md-lark-converter/core/node';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 interface Options {
   output?: string;
@@ -19,7 +14,7 @@ interface Options {
 }
 
 program
-  .name('md-to-lark')
+  .name('md2fs')
   .description('Convert Markdown to Lark (飞书) clipboard format')
   .version('1.0.0')
   .argument('[input]', 'Input markdown file path or stdin')
@@ -70,11 +65,9 @@ async function run(input: string, options: Options): Promise<void> {
         console.log(chalk.green(`✓ Output written to: ${options.output}`));
       }
     } else if (options.copy) {
-      // 使用 core 包的 generateHtml 函数
       const html = generateHtml(result);
 
       try {
-        // 尝试写入富文本格式
         await writeHtmlToClipboard(html);
         if (options.verbose) {
           console.log(chalk.green('✓ Copied rich text to clipboard! Paste directly to Lark document'));
@@ -82,14 +75,12 @@ async function run(input: string, options: Options): Promise<void> {
           console.log(chalk.green('✓ Copied to clipboard!'));
         }
       } catch (htmlError) {
-        // 如果富文本失败，显示错误信息
         if (options.verbose) {
           console.warn(chalk.yellow('⚠ Rich text copy failed, HTML content printed below:'));
           console.warn(chalk.dim((htmlError as Error).message));
         } else {
           console.warn(chalk.yellow('⚠ Rich text clipboard not supported on this platform'));
         }
-        // 输出 HTML 到控制台
         console.log(html);
       }
     } else {
