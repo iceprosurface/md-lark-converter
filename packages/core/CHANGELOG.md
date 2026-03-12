@@ -1,5 +1,11 @@
 # @md-lark-converter/core
 
+## 1.1.0
+
+### Minor Changes
+
+- feat: add Feishu document fetcher (`@md-lark-converter/core/feishu`) and `fs2md` CLI; rename `md-to-lark` to `md2fs`
+
 ## 1.0.3
 
 ### Patch Changes
