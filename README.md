@@ -274,12 +274,39 @@ vsce publish
 ### npm Publish
 
 ```bash
-# Publish CLI
-pnpm --filter @md-lark-converter/cli publish
+# Create a changeset for a release-worthy change
+pnpm changeset
 
-# Publish Core
-pnpm --filter @md-lark-converter/core publish
+# Apply pending version bumps locally (optional, usually done by GitHub Action)
+pnpm version
+
+# Publish all pending package releases
+pnpm release
 ```
+
+This repository uses Changesets together with `.github/workflows/publish-npm.yml`.
+
+1. Add a changeset file with `pnpm changeset`
+2. Merge the PR into `main`
+3. The GitHub Action opens or updates a release PR
+4. Merging that release PR publishes pending npm packages automatically
+5. During publish, Changesets creates git tags for the published package versions
+
+This workflow uses npm Trusted Publishing (OIDC), so it does not require a long-lived `NPM_TOKEN` for publishing.
+
+Configure a Trusted Publisher on npm for each public package:
+
+- `@md-lark-converter/core`
+- `@md-lark-converter/cli`
+
+GitHub Actions requirements:
+
+- workflow filename: `.github/workflows/publish-npm.yml`
+- GitHub-hosted runner
+- `permissions.id-token: write`
+
+The workflow only publishes the public npm packages (`@md-lark-converter/core` and `@md-lark-converter/cli`).
+In this monorepo, published package tags are package-scoped (for example `@md-lark-converter/core@1.2.3`) rather than a single repo-wide `v1.2.3` tag.
 
 ## Notes
 

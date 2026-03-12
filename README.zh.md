@@ -274,12 +274,39 @@ vsce publish
 ### 发布到 npm
 
 ```bash
-# 发布 CLI
-pnpm --filter @md-lark-converter/cli publish
+# 为需要发版的改动创建 changeset
+pnpm changeset
 
-# 发布 Core
-pnpm --filter @md-lark-converter/core publish
+# 在本地应用待发布版本号（可选，通常由 GitHub Action 处理）
+pnpm version
+
+# 发布所有待发布的 npm 包
+pnpm release
 ```
+
+当前仓库使用 Changesets，并通过 `.github/workflows/publish-npm.yml` 驱动 GitHub Action 发布流程。
+
+1. 用 `pnpm changeset` 生成变更说明
+2. 将包含 changeset 的 PR 合并到 `main`
+3. GitHub Action 会自动创建或更新发版 PR
+4. 合并发版 PR 后，待发布的 npm 包会自动发布
+5. 发布时，Changesets 会为已发布包创建对应的 git tag
+
+当前 workflow 走 npm Trusted Publishing（OIDC）模式，不依赖长期有效的 `NPM_TOKEN`。
+
+需要在 npm 上为每个公开包配置 Trusted Publisher：
+
+- `@md-lark-converter/core`
+- `@md-lark-converter/cli`
+
+GitHub Actions 侧需要满足：
+
+- 使用 `.github/workflows/publish-npm.yml`
+- 使用 GitHub-hosted runner
+- workflow 保留 `permissions.id-token: write`
+
+这个工作流只会发布公开的 npm 包（`@md-lark-converter/core` 和 `@md-lark-converter/cli`）。
+在这个 monorepo 里，tag 默认按包维度创建，例如 `@md-lark-converter/core@1.2.3`，而不是只打一个仓库级的 `v1.2.3`。
 
 ## 注意事项
 
