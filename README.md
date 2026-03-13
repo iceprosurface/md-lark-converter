@@ -58,7 +58,7 @@ Install the agent skill for Claude Code, Cursor, OpenCode, and other AI coding a
 npx skills add iceprosurface/md-lark-converter
 ```
 
-This adds the `markdown-to-feishu` skill so your coding agent knows how to convert Markdown ↔ Feishu documents and manage Feishu cookies.
+This adds the `md-lark-converter` skill so your coding agent knows how to convert Markdown ↔ Feishu documents and manage Feishu cookies.
 
 ### Local Development
 
