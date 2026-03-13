@@ -1,127 +1,135 @@
 ---
 name: markdown-to-feishu
-description: Convert Markdown documents to Feishu (Lark) clipboard format for direct pasting, or fetch Feishu documents and export as Markdown. Use when the user wants to publish Markdown content to Feishu, convert Feishu docs to Markdown, or manage Feishu authentication cookies.
+description: "Bidirectional conversion between Markdown and Feishu (Lark) documents. Use this skill whenever the user mentions Feishu, Lark, 飞书, feishu.cn URLs, pasting documents to Feishu, exporting from Feishu, converting to/from Feishu format, syncing content with Feishu, setting up Feishu cookies, or any workflow involving Markdown and Feishu documents — even if they don't explicitly say 'convert'. Also trigger when the user shares a feishu.cn or lark link."
 ---
 
 # Markdown ↔ Feishu Converter
 
-This skill provides bidirectional conversion between Markdown and Feishu (Lark) documents using the `@md-lark-converter/cli` package.
+Two CLI commands handle the conversion:
 
-## Prerequisites
+- **`md2fs`** — Markdown → Feishu clipboard format (paste directly into Feishu docs)
+- **`fs2md`** — Feishu → Markdown (fetch via URL, with automatic image download)
 
-Ensure the CLI is installed:
+Both are provided by `@md-lark-converter/cli`.
+
+## First: Check CLI Availability
+
+Before running any command, verify the CLI is installed:
+
+```bash
+which md2fs 2>/dev/null || echo "NOT_INSTALLED"
+```
+
+If not installed, install it:
 
 ```bash
 npm install -g @md-lark-converter/cli
 ```
 
-This provides two commands: `md2fs` (Markdown → Feishu) and `fs2md` (Feishu → Markdown).
-
-## When to Use
-
-- User wants to publish a Markdown file or content to Feishu
-- User wants to convert a Feishu document to Markdown
-- User asks to "paste to Feishu", "send to Lark", or "export from Feishu"
-- User needs to set up Feishu authentication
-
-## Feishu Cookie Setup
-
-Before using `fs2md` (fetching from Feishu), a valid session cookie is required. The cookie is read in this priority order:
-
-1. `--cookie` CLI flag
-2. `FEISHU_COOKIE` environment variable
-3. Config file `~/.md-lark-converter.json`
-
-### How to Get the Cookie
-
-Guide the user through these steps:
-
-1. Open Feishu in a browser (e.g. `https://xxx.feishu.cn`)
-2. Log in to their account
-3. Open browser DevTools (`F12` or `Cmd+Option+I`)
-4. Go to the **Network** tab
-5. Navigate to any Feishu document
-6. Click on any request to `feishu.cn`
-7. In the request headers, find the `Cookie` header
-8. Copy the **entire** cookie string
-
-### Save Cookie to Config File
-
-After obtaining the cookie, save it to `~/.md-lark-converter.json` so the user doesn't need to pass it every time:
-
-```bash
-cat > ~/.md-lark-converter.json << 'EOF'
-{
-  "cookie": "PASTE_COOKIE_STRING_HERE"
-}
-EOF
-```
-
-Or use a one-liner:
-
-```bash
-echo '{"cookie":"PASTE_COOKIE_STRING_HERE"}' > ~/.md-lark-converter.json
-```
-
-**Important**: The cookie expires periodically. If `fs2md` returns authentication errors, the user needs to repeat the steps above to get a fresh cookie.
-
 ## Markdown → Feishu (md2fs)
 
-Convert a Markdown file and copy to clipboard for pasting into Feishu:
+The most common use case — the user has Markdown content and wants it in Feishu.
 
 ```bash
-# Copy to clipboard — paste directly into Feishu document
+# Convert and copy to clipboard — user pastes directly into Feishu
 md2fs <file.md> --copy
 
-# Read from stdin
-echo "# Hello" | md2fs --stdin --copy
+# Pipe content from stdin
+echo "# Hello World" | md2fs --stdin --copy
 
-# Save as JSON file instead
+# Save raw Lark JSON (for debugging or programmatic use)
 md2fs <file.md> -o output.json
 ```
 
-After running `md2fs --copy`, tell the user to paste (`Cmd+V` / `Ctrl+V`) directly into a Feishu document.
+After `md2fs --copy` succeeds, tell the user: "Content copied to clipboard — paste into your Feishu document with Cmd+V / Ctrl+V."
+
+If clipboard copy fails (common on headless/remote environments), `md2fs` falls back to printing HTML to stdout. In that case, suggest saving to a JSON file with `-o` instead.
 
 ## Feishu → Markdown (fs2md)
 
-Fetch a Feishu document and convert to Markdown:
+Fetches a Feishu document by URL and converts to Markdown. Requires authentication — see Cookie Setup below.
 
 ```bash
-# Save to file (images auto-downloaded to ./images/)
+# Save to file (images auto-downloaded to ./images/ next to the output)
 fs2md <feishu-url> -o output.md
 
-# Copy Markdown to clipboard
+# Copy Markdown to clipboard instead of saving
 fs2md <feishu-url>
 
 # Skip image downloading
 fs2md <feishu-url> -o output.md --no-images
 ```
 
-### Supported URL Formats
+### Supported URL formats
 
-- `https://xxx.feishu.cn/docx/TOKEN` — Feishu docx documents
-- `https://xxx.feishu.cn/wiki/TOKEN` — Feishu wiki pages (auto-resolved to underlying docx)
+Both document types are supported — wiki URLs are auto-resolved to the underlying docx:
 
-### Image Handling
+- `https://xxx.feishu.cn/docx/TOKEN`
+- `https://xxx.feishu.cn/wiki/TOKEN`
 
-By default, `fs2md` automatically downloads all images from the Feishu document:
+### Image handling
 
-- Images are saved to an `images/` directory next to the output file
-- Markdown image references are rewritten to `./images/filename.png`
-- Use `--no-images` to skip downloading
+By default, all images in the document are downloaded to an `images/` directory alongside the output file, and Markdown references are rewritten to `./images/filename.png`. Use `--no-images` if you only need the text.
 
-## Workflow Example
+## Cookie Setup (Required for fs2md)
 
-When the user says "convert this document to Feishu":
+`fs2md` needs a Feishu session cookie to access documents. The cookie is resolved in this order:
 
-1. Identify the Markdown file path
+1. `--cookie` CLI flag (one-off use)
+2. `FEISHU_COOKIE` environment variable
+3. `~/.md-lark-converter.json` config file (recommended for persistent use)
+
+### Check if cookie is already configured
+
+```bash
+cat ~/.md-lark-converter.json 2>/dev/null
+```
+
+### How to obtain the cookie
+
+Walk the user through these steps:
+
+1. Open a Feishu document in the browser (e.g. `https://xxx.feishu.cn/docx/...`)
+2. Open DevTools — `F12` (Windows/Linux) or `Cmd+Option+I` (macOS)
+3. Switch to the **Network** tab
+4. Refresh the page
+5. Click any request to `feishu.cn` or `lark`
+6. In the request headers, locate the **Cookie** header
+7. Copy the **entire** cookie string (it's long — that's expected)
+
+### Save to config file
+
+Saving to the config file means the user won't need to pass the cookie every time:
+
+```bash
+# Replace YOUR_COOKIE_HERE with the actual cookie string
+cat > ~/.md-lark-converter.json << 'EOF'
+{
+  "cookie": "YOUR_COOKIE_HERE"
+}
+EOF
+```
+
+The cookie expires periodically (typically after a few days). If `fs2md` returns authentication errors or empty results, the cookie needs to be refreshed — repeat the steps above and overwrite the config file.
+
+## Decision Flow
+
+When the user's request involves Feishu:
+
+**User has Markdown, wants it in Feishu →**
+1. Identify the Markdown file path or content
 2. Run `md2fs <path> --copy`
-3. Tell the user the content is in their clipboard, ready to paste into Feishu
+3. Confirm clipboard is ready for pasting
 
-When the user says "export this Feishu doc as Markdown":
-
-1. Get the Feishu document URL from the user
-2. Check if cookie is configured: `cat ~/.md-lark-converter.json 2>/dev/null`
-3. If no cookie, guide the user through the cookie setup steps above
+**User wants Feishu content as Markdown →**
+1. Get the Feishu document URL
+2. Check cookie: `cat ~/.md-lark-converter.json 2>/dev/null`
+3. If no cookie exists, guide through the cookie setup steps above
 4. Run `fs2md <url> -o <output-path>`
-5. Report the saved file path and number of images downloaded
+5. Report the saved file path and image count
+
+**User shares a feishu.cn link without explicit instructions →**
+Ask whether they want to export it as Markdown. If yes, follow the Feishu → Markdown flow.
+
+**User mentions Feishu cookie / authentication issues →**
+Check the existing config, then guide through cookie refresh.
