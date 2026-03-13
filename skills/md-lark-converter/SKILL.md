@@ -93,11 +93,26 @@ When a cookie is needed (missing or expired), **proactively ask the user**:
 
 > "I need a Feishu session cookie to fetch documents. Would you like me to automatically open a browser and extract it after you log in? Or would you prefer to copy it manually from DevTools?"
 
-#### Option A: Automatic extraction via browser automation (recommended)
+#### Option A: Automatic extraction via MCP browser tool (if available)
 
-Use your built-in Playwright or browser automation capabilities (e.g. the `webapp-testing` skill, `electron` skill, or any available MCP browser tool) to:
+**IMPORTANT: Do NOT write a Playwright/Puppeteer script file. Only use this option if an MCP browser tool is available in the current session.**
 
-1. Launch a headed Chromium browser and navigate to `https://www.feishu.cn`
+**Prerequisite:** This option requires a Playwright MCP server. If the user wants automatic extraction but hasn't configured one, suggest adding it to `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@anthropic/mcp-playwright"]
+    }
+  }
+}
+```
+
+After confirming an MCP browser tool is available, use it to:
+
+1. Launch a headed browser and navigate to `https://www.feishu.cn`
 2. Tell the user to log in within the browser window
 3. Poll the browser cookies every 2 seconds, checking for `session_list_v5` or `_csrf_token` cookie names — their presence indicates a successful login
 4. Once detected, collect all cookies whose domain includes `feishu.cn` or `lark`, format them as `name=value; name=value; ...`
@@ -107,14 +122,16 @@ Use your built-in Playwright or browser automation capabilities (e.g. the `webap
    ```
 6. Close the browser and confirm to the user that the cookie has been saved
 
-**Key details for the automation:**
+**Key details:**
 - Use `headless: false` — the user needs to interact with the login page
 - Set a generous timeout (5 minutes) for the polling loop — login may involve 2FA or SSO
-- Do NOT rely on URL pattern matching after login; Feishu may redirect to `messenger`, `calendar`, `base`, `home`, or many other paths depending on user settings
+- Do NOT rely on URL pattern matching after login; Feishu may redirect to various paths
 
-#### Option B: Manual extraction from DevTools
+If no MCP browser tool is available, **skip this option entirely** and go to Option B.
 
-If browser automation is unavailable (remote/headless server, no Playwright access), guide the user through manual extraction:
+#### Option B: Manual extraction from DevTools (default)
+
+Guide the user through manual extraction:
 
 1. Open a Feishu document in the browser (e.g. `https://xxx.feishu.cn/docx/...`)
 2. Open DevTools — `F12` (Windows/Linux) or `Cmd+Option+I` (macOS)
