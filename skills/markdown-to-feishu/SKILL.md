@@ -1,6 +1,6 @@
 ---
 name: markdown-to-feishu
-description: "Bidirectional conversion between Markdown and Feishu (Lark) documents. Use this skill whenever the user mentions Feishu, Lark, 飞书, feishu.cn URLs, pasting documents to Feishu, exporting from Feishu, converting to/from Feishu format, syncing content with Feishu, setting up Feishu cookies, or any workflow involving Markdown and Feishu documents — even if they don't explicitly say 'convert'. Also trigger when the user shares a feishu.cn or lark link."
+description: "Bidirectional conversion between Markdown and Feishu (Lark) documents using md2fs and fs2md CLI tools. Use this skill whenever the user mentions Feishu, Lark, 飞书, feishu.cn URLs, md2fs, fs2md, md-lark-converter, pasting documents to Feishu, exporting from Feishu, converting to/from Feishu format, syncing content with Feishu, setting up Feishu cookies, or any workflow involving Markdown and Feishu documents — even if they don't explicitly say 'convert'. Also trigger when the user shares a feishu.cn or lark link."
 ---
 
 # Markdown ↔ Feishu Converter
