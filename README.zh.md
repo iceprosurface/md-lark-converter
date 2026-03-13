@@ -50,6 +50,16 @@ npm install -g @md-lark-converter/cli
 pnpm install -g @md-lark-converter/cli
 ```
 
+### 安装 Agent Skill
+
+为 Claude Code、Cursor、OpenCode 等 AI 编程助手安装技能：
+
+```bash
+npx skills add iceprosurface/md-lark-converter
+```
+
+安装后，编程助手会自动学会如何转换 Markdown ↔ 飞书文档以及管理飞书 cookie 配置。
+
 ### 本地开发
 
 ```bash
