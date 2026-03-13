@@ -50,6 +50,16 @@ npm install -g @md-lark-converter/cli
 pnpm install -g @md-lark-converter/cli
 ```
 
+### Agent Skill Install
+
+Install the agent skill for Claude Code, Cursor, OpenCode, and other AI coding agents:
+
+```bash
+npx skills add iceprosurface/md-lark-converter
+```
+
+This adds the `markdown-to-feishu` skill so your coding agent knows how to convert Markdown ↔ Feishu documents and manage Feishu cookies.
+
 ### Local Development
 
 ```bash
