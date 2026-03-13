@@ -1,18 +1,21 @@
-# Markdown 转飞书文档转换器
+# Markdown ↔ 飞书文档转换器
 
 [![English](https://img.shields.io/badge/Language-English-1f6feb.svg)](./README.md)
 [![简体中文](https://img.shields.io/badge/%E8%AF%AD%E8%A8%80-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-12b886.svg)](./README.zh.md)
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)
 
-将 Markdown 内容转换为飞书文档剪贴板格式，支持直接粘贴到飞书文档中。兼容 OpenCode 和 Claude Code。
+Markdown 与飞书文档格式的双向转换工具。支持将 Markdown 转换为飞书剪贴板格式直接粘贴，也支持抓取飞书文档导出为 Markdown 并自动下载图片。
 
 ## 功能特性
 
-- ✅ **完整支持 Markdown**：标题、列表、引用、代码块、Mermaid 图表等
-- ✅ **多种使用方式**：CLI 工具、Web 界面、VSCode 扩展
+- ✅ **双向转换**：Markdown → 飞书 和 飞书 → Markdown
+- ✅ **完整支持 Markdown**：标题、列表、引用、代码块、表格、数学公式、Mermaid 图表、图片等
+- ✅ **飞书文档抓取**：通过 URL 直接抓取飞书文档并转换为 Markdown
+- ✅ **自动下载图片**：自动下载飞书文档中的图片到本地
+- ✅ **多种使用方式**：CLI 工具（`md2fs` / `fs2md`）、Web 界面、VSCode 扩展
 - ✅ **对剪贴板友好**：一键复制，可直接粘贴到飞书文档
 - ✅ **IDE 集成**：支持 OpenCode、Claude Code、VSCode、Cursor
 - ✅ **Monorepo 架构**：核心逻辑可复用，易于维护和扩展
@@ -26,12 +29,15 @@
 | 斜体 | `*italic*` | 斜体文本 |
 | 删除线 | `~~strike~~` | 删除线文本 |
 | 行内代码 | `` `code` `` | 行内代码 |
-| 代码块 | ```javascript``` | 代码块（支持语法高亮） |
-| Mermaid 图表 | ```mermaid``` | 流程图、时序图等 |
+| 代码块 | ` ```javascript``` ` | 代码块（支持语法高亮） |
+| Mermaid 图表 | ` ```mermaid``` ` | 流程图、时序图等 |
+| 数学公式 | `$E=mc^2$` | 行内和块级数学公式（LaTeX） |
 | 引用 | `> quote` | 引用块 |
 | 无序列表 | `- item` | 无序列表（支持多级） |
 | 有序列表 | `1. item` | 有序列表（支持多级） |
 | 任务列表 | `- [x] done` | 任务列表 |
+| 表格 | `\| a \| b \|` | GFM 表格 |
+| 图片 | `![alt](url)` | 图片块 |
 | 分割线 | `---` | 水平分隔线 |
 
 ## 安装
@@ -43,8 +49,6 @@ npm install -g @md-lark-converter/cli
 # 或使用 pnpm
 pnpm install -g @md-lark-converter/cli
 ```
-
-> 如果全局安装时报 `ERR_PNPM_WORKSPACE_PKG_NOT_FOUND`，请升级到包含修复的最新 CLI 版本；也可以直接在仓库中执行 `pnpm install`、`pnpm build`，再通过 `pnpm --filter @md-lark-converter/cli start -- input.md` 运行 CLI。
 
 ### 本地开发
 
@@ -58,26 +62,48 @@ pnpm install
 
 ### CLI 工具
 
-#### 转换文件
+CLI 包提供两个命令：
+
+- **`md2fs`** — 将 Markdown 转换为飞书剪贴板格式
+- **`fs2md`** — 抓取飞书文档并转换为 Markdown
+
+#### md2fs：Markdown → 飞书
 
 ```bash
-# 转换 Markdown 文件
-md-to-lark input.md
+# 转换 Markdown 文件（输出 JSON 到标准输出）
+md2fs input.md
 
 # 保存为 JSON 文件
-md-to-lark input.md -o output.json
+md2fs input.md -o output.json
 
 # 从标准输入读取
-echo "# Heading" | md-to-lark --stdin
+echo "# Heading" | md2fs --stdin
 
-# 复制到剪贴板（适配 OpenCode / Claude Code）
-md-to-lark input.md --copy
+# 复制到剪贴板（可直接粘贴到飞书文档）
+md2fs input.md --copy
+
+# 显示详细输出
+md2fs input.md --verbose
 ```
 
-#### 输出详细日志
+#### fs2md：飞书 → Markdown
 
 ```bash
-md-to-lark input.md --verbose
+# 抓取飞书文档并将 Markdown 复制到剪贴板
+fs2md https://example.feishu.cn/docx/xxx --cookie "session=..."
+
+# 保存到文件（图片自动下载到 ./images/）
+fs2md https://example.feishu.cn/docx/xxx -o output.md --cookie "session=..."
+
+# 跳过图片下载
+fs2md https://example.feishu.cn/docx/xxx --no-images --cookie "session=..."
+
+# 使用 FEISHU_COOKIE 环境变量
+export FEISHU_COOKIE="session=..."
+fs2md https://example.feishu.cn/docx/xxx -o output.md
+
+# 显示详细输出
+fs2md https://example.feishu.cn/docx/xxx --verbose --cookie "session=..."
 ```
 
 ### Web 界面
@@ -123,11 +149,11 @@ pnpm dev:debug
 在 IDE 中使用 CLI 工具：
 
 ```bash
-# 转换当前文件
-md-to-lark current.md --copy
+# 将 Markdown 转换为飞书剪贴板格式
+md2fs current.md --copy
 
-# 转换选中内容（需要先保存）
-# 将输出复制到剪贴板后，再粘贴到飞书文档
+# 抓取飞书文档转换为 Markdown
+fs2md https://example.feishu.cn/docx/xxx -o doc.md --cookie "session=..."
 ```
 
 ## 项目结构
@@ -136,14 +162,16 @@ md-to-lark current.md --copy
 md-lark-converter/
 ├── packages/
 │   ├── core/           # 核心转换逻辑（可复用）
-│   │   ├── lib/
+│   │   ├── src/
 │   │   │   ├── converter/
-│   │   │   │   └── markdownToLark.ts  # Markdown -> 飞书 Block 转换
-│   │   │   └── utils/
-│   │   │       └── idGenerator.ts      # ID 生成器
-│   │   └── index.ts
+│   │   │   │   └── markdownToLark.ts  # Markdown → 飞书 Block 转换
+│   │   │   ├── feishuFetcher.ts       # 飞书文档抓取
+│   │   │   ├── imageDownloader.ts     # 图片下载工具
+│   │   │   ├── htmlGenerator.ts       # 剪贴板 HTML 包装
+│   │   │   └── index.ts              # 公开 API（markdownToLark, larkToMarkdown）
 │   ├── cli/            # 命令行工具
-│   │   └── index.ts
+│   │   ├── md2fs.ts    # Markdown → 飞书 CLI
+│   │   └── fs2md.ts    # 飞书 → Markdown CLI
 │   ├── web-app/        # Web 简洁版（用户使用 + Vercel 部署）
 │   │   ├── src/App.tsx # 双向转换 + 简洁 UI
 │   │   ├── index.html
@@ -167,10 +195,10 @@ md-lark-converter/
 
 ### 转换流程
 
-1. **解析 Markdown**：使用 `marked` 库将 Markdown 解析为 token
-2. **映射块类型**：将 Markdown token 映射为飞书 block 类型
-3. **生成数据结构**：构建 `recordMap`、`blockIds`、`recordIds`
-4. **生成剪贴板数据**：封装为 `data-lark-record-data` 格式
+1. **解析 Markdown**：使用 `remark-parse` + `remark-gfm` + `remark-math` 将 Markdown 解析为 MDAST
+2. **映射块类型**：递归将 AST 节点转换为飞书 `BlockSnapshot` 对象
+3. **生成数据结构**：构建 `recordMap`、`blockIds`、`apool` 属性池
+4. **生成剪贴板数据**：封装为 `ClipboardData` JSON，可选包装为 HTML 用于剪贴板粘贴
 
 ### 飞书数据结构
 
@@ -209,9 +237,6 @@ pnpm install
 # 测试 core 包
 pnpm --filter @md-lark-converter/core test
 
-# 测试 CLI
-pnpm --filter @md-lark-converter/cli start
-
 # 启动 Web 开发服务器
 pnpm dev
 ```
@@ -236,8 +261,8 @@ pnpm lint
 
 ### 新增 Markdown 语法支持
 
-1. 在 `packages/core/lib/converter/markdownToLark.ts` 的 `convertToken` 方法中新增对应 token 类型处理
-2. 在对应的 `createXXXBlock` 方法中实现 block 数据生成逻辑
+1. 在 `packages/core/src/converter/markdownToLark.ts` 中新增对应节点类型处理
+2. 在对应方法中实现 block 数据生成逻辑
 
 ### 新增 IDE 支持
 
@@ -313,7 +338,7 @@ GitHub Actions 侧需要满足：
 - **兼容性**：支持 Node.js >= 18.0.0
 - **飞书格式**：当前版本支持飞书文档剪贴板格式
 - **文本格式**：支持基础文本格式，复杂的 `apool` 属性格式仍在持续完善
-- **图片处理**：会保留图片链接，但暂不支持自动上传到飞书
+- **图片处理**：`md2fs` 保留图片链接转为飞书格式；`fs2md` 自动下载飞书文档中的图片到本地
 
 ## 常见问题
 
@@ -325,14 +350,14 @@ GitHub Actions 侧需要满足：
 
 答：飞书渲染 Mermaid 图表需要一点时间，请稍等几秒。
 
-### 问：如何支持自定义 ID 生成？
+### 问：如何提供飞书 cookie 给 fs2md？
 
-答：可修改 `packages/core/lib/utils/idGenerator.ts` 中的生成逻辑。
+答：使用 `--cookie` 选项或设置 `FEISHU_COOKIE` 环境变量。可以在登录飞书后，通过浏览器开发者工具（Network 标签）提取 cookie。
 
 ## 技术栈
 
 - **核心逻辑**：TypeScript（ES Modules）
-- **Markdown 解析**：marked
+- **Markdown 解析**：remark（unified + remark-parse + remark-gfm + remark-math）
 - **CLI 框架**：commander
 - **Web 框架**：React 19 + Vite
 - **样式方案**：Tailwind CSS
