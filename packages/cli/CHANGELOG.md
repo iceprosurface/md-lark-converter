@@ -1,5 +1,11 @@
 # @md-lark-converter/cli
 
+## 1.2.1
+
+### Patch Changes
+
+- fix(cli): use resolveCookie for image downloads to read config file
+
 ## 1.2.0
 
 ### Minor Changes

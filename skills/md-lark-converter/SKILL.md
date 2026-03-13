@@ -93,40 +93,36 @@ When a cookie is needed (missing or expired), **proactively ask the user**:
 
 > "I need a Feishu session cookie to fetch documents. Would you like me to automatically open a browser and extract it after you log in? Or would you prefer to copy it manually from DevTools?"
 
-#### Option A: Automatic extraction via MCP browser tool
+#### Option A: Automatic extraction via `agent-browser` (recommended)
 
-**IMPORTANT: Do NOT write a Playwright/Puppeteer script file to implement this. Use an MCP browser tool.**
+**IMPORTANT: Do NOT write a Playwright/Puppeteer script file. Use `agent-browser` CLI commands directly.**
 
-If the user chooses automatic extraction:
+**Prerequisite:** This requires [`agent-browser`](https://github.com/vercel-labs/agent-browser). If not installed, tell the user:
 
-1. Check if an MCP browser tool (e.g. Playwright MCP) is available in the current session
-2. If **not available**, tell the user they need to configure one first, and suggest adding this to `.mcp.json` in the project root or `~/.claude/mcp.json` globally:
-   ```json
-   {
-     "mcpServers": {
-       "playwright": {
-         "command": "npx",
-         "args": ["@anthropic/mcp-playwright"]
-       }
-     }
-   }
+```bash
+npm install -g agent-browser
+```
+
+Once installed, use `agent-browser` CLI commands to:
+
+1. Launch a headed browser and navigate to Feishu:
+   ```bash
+   agent-browser navigate https://www.feishu.cn --headed
    ```
-   Then ask the user to restart the session after adding the config.
-3. If **available**, use the MCP browser tool to:
-   1. Launch a headed browser and navigate to `https://www.feishu.cn`
-   2. Tell the user to log in within the browser window
-   3. Poll the browser cookies every 2 seconds, checking for `session_list_v5` or `_csrf_token` cookie names — their presence indicates a successful login
-   4. Once detected, collect all cookies whose domain includes `feishu.cn` or `lark`, format them as `name=value; name=value; ...`
-   5. Save to `~/.md-lark-converter.json`:
-      ```json
-      { "cookie": "<collected-cookie-string>" }
-      ```
-   6. Close the browser and confirm to the user that the cookie has been saved
-
-**Key details:**
-- Use `headless: false` — the user needs to interact with the login page
-- Set a generous timeout (5 minutes) for the polling loop — login may involve 2FA or SSO
-- Do NOT rely on URL pattern matching after login; Feishu may redirect to various paths
+2. Tell the user to log in within the browser window. Wait for the user to confirm they have logged in.
+3. Read cookies from the browser:
+   ```bash
+   agent-browser cookies
+   ```
+4. From the output, collect all cookies whose domain includes `feishu.cn` or `lark`, format as `name=value; name=value; ...`
+5. Save to `~/.md-lark-converter.json`:
+   ```json
+   { "cookie": "<collected-cookie-string>" }
+   ```
+6. Close the browser:
+   ```bash
+   agent-browser close
+   ```
 
 #### Option B: Manual extraction from DevTools (default)
 
