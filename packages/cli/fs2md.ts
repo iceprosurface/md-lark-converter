@@ -5,7 +5,7 @@ import chalk from 'chalk';
 import { writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { larkToMarkdown } from '@md-lark-converter/core';
-import { fetchFeishuDocument } from '@md-lark-converter/core/feishu';
+import { fetchFeishuDocument, resolveCookie } from '@md-lark-converter/core/feishu';
 import { extractImageTokens, downloadAllImages } from '@md-lark-converter/core/image';
 
 interface Options {
@@ -50,7 +50,7 @@ async function run(url: string, options: Options): Promise<void> {
           ? join(dirname(options.output), 'images')
           : join(process.cwd(), 'images');
         const domain = new URL(url).origin;
-        const cookie = options.cookie || process.env.FEISHU_COOKIE || '';
+        const cookie = resolveCookie(options.cookie);
 
         console.log(chalk.yellow(`Found ${images.length} image(s), downloading...`));
         imagePathMap = await downloadAllImages(images, {
