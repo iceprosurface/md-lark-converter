@@ -85,9 +85,82 @@ By default, all images in the document are downloaded to an `images/` directory 
 cat ~/.md-lark-converter.json 2>/dev/null
 ```
 
-### How to obtain the cookie
+If the config file exists and contains a cookie, try using it directly. Only proceed with cookie setup if it's missing or expired (authentication errors).
 
-Walk the user through these steps:
+### Obtaining the cookie
+
+When a cookie is needed (missing or expired), **proactively ask the user**:
+
+> "Feishu cookie is required to fetch documents. I can try to automatically extract it from your browser using Playwright — this opens a browser window for you to log in, then captures the session cookie. Would you like me to do that, or would you prefer to copy it manually from DevTools?"
+
+#### Option A: Automatic extraction via Playwright (recommended)
+
+This approach launches a real browser, lets the user log in normally, then extracts the cookie from the browser session — no manual DevTools copying needed.
+
+```bash
+# Ensure Playwright is available
+npx playwright install chromium 2>/dev/null
+```
+
+Write and execute a script to extract cookies:
+
+```javascript
+// extract-feishu-cookie.mjs
+import { chromium } from 'playwright';
+import { writeFileSync } from 'fs';
+import { join } from 'path';
+import { homedir } from 'os';
+
+const CONFIG_PATH = join(homedir(), '.md-lark-converter.json');
+const FEISHU_URL = 'https://www.feishu.cn';
+
+async function extractCookie() {
+  const browser = await chromium.launch({ headless: false });
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
+  await page.goto(FEISHU_URL);
+
+  console.log('Please log in to Feishu in the browser window...');
+  console.log('After logging in and seeing a document page, press Enter here to continue.');
+
+  // Wait for the user to log in — detect by watching for authenticated pages
+  await page.waitForURL(/\/(docx|wiki|drive|docs|home|recently)/, { timeout: 300000 });
+
+  // Give a moment for all cookies to settle
+  await page.waitForTimeout(2000);
+
+  const cookies = await context.cookies();
+  const cookieString = cookies
+    .filter(c => c.domain.includes('feishu.cn') || c.domain.includes('lark'))
+    .map(c => `${c.name}=${c.value}`)
+    .join('; ');
+
+  if (!cookieString) {
+    console.error('No Feishu cookies found. Please ensure you are logged in.');
+    await browser.close();
+    process.exit(1);
+  }
+
+  writeFileSync(CONFIG_PATH, JSON.stringify({ cookie: cookieString }, null, 2));
+  console.log(`Cookie saved to ${CONFIG_PATH}`);
+
+  await browser.close();
+}
+
+extractCookie().catch(console.error);
+```
+
+Run it:
+```bash
+node extract-feishu-cookie.mjs
+```
+
+The browser window closes automatically after the cookie is captured. The user only needs to log in once — the cookie is saved to `~/.md-lark-converter.json`.
+
+#### Option B: Manual extraction from DevTools
+
+If the user prefers not to use Playwright, or the environment doesn't support headed browsers (remote/headless servers), walk them through manual extraction:
 
 1. Open a Feishu document in the browser (e.g. `https://xxx.feishu.cn/docx/...`)
 2. Open DevTools — `F12` (Windows/Linux) or `Cmd+Option+I` (macOS)
@@ -97,12 +170,9 @@ Walk the user through these steps:
 6. In the request headers, locate the **Cookie** header
 7. Copy the **entire** cookie string (it's long — that's expected)
 
-### Save to config file
-
-Saving to the config file means the user won't need to pass the cookie every time:
+Then save to config file:
 
 ```bash
-# Replace YOUR_COOKIE_HERE with the actual cookie string
 cat > ~/.md-lark-converter.json << 'EOF'
 {
   "cookie": "YOUR_COOKIE_HERE"
@@ -110,7 +180,9 @@ cat > ~/.md-lark-converter.json << 'EOF'
 EOF
 ```
 
-The cookie expires periodically (typically after a few days). If `fs2md` returns authentication errors or empty results, the cookie needs to be refreshed — repeat the steps above and overwrite the config file.
+### Cookie expiration
+
+The cookie expires periodically (typically after a few days). If `fs2md` returns authentication errors or empty results, the cookie needs to be refreshed. Ask the user again whether they'd like automatic or manual extraction.
 
 ## Decision Flow
 
@@ -124,7 +196,7 @@ When the user's request involves Feishu:
 **User wants Feishu content as Markdown →**
 1. Get the Feishu document URL
 2. Check cookie: `cat ~/.md-lark-converter.json 2>/dev/null`
-3. If no cookie exists, guide through the cookie setup steps above
+3. If no cookie exists, ask the user whether to auto-extract via Playwright or manually copy from DevTools
 4. Run `fs2md <url> -o <output-path>`
 5. Report the saved file path and image count
 
@@ -132,4 +204,4 @@ When the user's request involves Feishu:
 Ask whether they want to export it as Markdown. If yes, follow the Feishu → Markdown flow.
 
 **User mentions Feishu cookie / authentication issues →**
-Check the existing config, then guide through cookie refresh.
+Check the existing config, then offer automatic Playwright extraction first, with manual DevTools as fallback.
