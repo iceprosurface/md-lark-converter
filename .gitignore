@@ -33,6 +33,7 @@ lerna-debug.log*
 !apps/vscode-extension/.vscode/
 .idea/
 .claude/
+.agents/
 *.swp
 *.swo
 *~
