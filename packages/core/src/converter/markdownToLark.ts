@@ -4,7 +4,6 @@ import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
-import { visit, SKIP } from 'unist-util-visit';
 import type { Root, Heading, Paragraph, List, ListItem, Blockquote, Code, ThematicBreak, Strong, Emphasis, Link, InlineCode, Delete } from 'mdast';
 import type { Math, InlineMath } from 'mdast-util-math';
 import type { ClipboardData } from '../index.js';
@@ -98,77 +97,80 @@ export class MarkdownToLarkConverter {
   private convertTree(tree: Root): void {
     const topLevelRecordIds: string[] = [];
 
-    visit(tree, (node, index, parent) => {
-      if (parent?.type === 'listItem') {
-        return SKIP;
-      }
-
-      if (node.type === 'heading') {
-        const recordId = generateRecordId();
-        this.recordMap[recordId] = this.createHeadingBlock(recordId, node as Heading);
-        this.recordIds.push(recordId);
-        this.blockIds.push(this.blockIds.length + 1);
-        topLevelRecordIds.push(recordId);
-      } else if (node.type === 'paragraph') {
-        const recordId = generateRecordId();
-        this.recordMap[recordId] = this.createTextBlock(recordId, node as Paragraph);
-        this.recordIds.push(recordId);
-        this.blockIds.push(this.blockIds.length + 1);
-        topLevelRecordIds.push(recordId);
-      } else if (node.type === 'blockquote') {
-        const recordId = generateRecordId();
-        this.recordMap[recordId] = this.createQuoteBlock(recordId, node as Blockquote);
-        this.recordIds.push(recordId);
-        this.blockIds.push(this.blockIds.length + 1);
-        topLevelRecordIds.push(recordId);
-        return SKIP;
-      } else if (node.type === 'code') {
-        const recordId = generateRecordId();
-        const codeNode = node as Code;
-        if (codeNode.lang && codeNode.lang.toLowerCase() === 'mermaid') {
-          this.recordMap[recordId] = this.createMermaidBlock(recordId, codeNode.value);
-        } else {
-          this.recordMap[recordId] = this.createCodeBlock(recordId, codeNode.value, codeNode.lang ?? undefined);
-        }
-        this.recordIds.push(recordId);
-        this.blockIds.push(this.blockIds.length + 1);
-        topLevelRecordIds.push(recordId);
-      } else if (node.type === 'thematicBreak') {
-        const recordId = generateRecordId();
-        this.recordMap[recordId] = this.createDividerBlock(recordId);
-        this.recordIds.push(recordId);
-        this.blockIds.push(this.blockIds.length + 1);
-        topLevelRecordIds.push(recordId);
-      } else if (node.type === 'math') {
-        const mathNode = node as any;
-        const recordId = generateRecordId();
-        const equation = mathNode.value ?? '';
-        this.recordMap[recordId] = this.createEquationParagraphBlock(recordId, equation);
-        this.recordIds.push(recordId);
-        this.blockIds.push(this.blockIds.length + 1);
-        topLevelRecordIds.push(recordId);
-      } else if (node.type === 'table') {
-        const tableRecordIds = this.convertTable(node);
-        topLevelRecordIds.push(tableRecordIds.tableId);
-      }
-    });
-
-    const processedLists = new Set<any>();
-    visit(tree, 'list', (node, index, parent) => {
-      if (processedLists.has(node)) {
-        return SKIP;
-      }
-      processedLists.add(node);
-      if (parent?.type === 'listItem') {
-        return SKIP;
-      }
-      const listRecordIds = this.convertList(node as List);
-      topLevelRecordIds.push(...listRecordIds);
-    });
+    for (const node of tree.children) {
+      topLevelRecordIds.push(...this.convertTopLevelNode(node));
+    }
 
     if (this.rootId && this.recordMap[this.rootId]) {
       this.recordMap[this.rootId].snapshot.children = topLevelRecordIds;
     }
+  }
+
+  private convertTopLevelNode(node: Root['children'][number]): string[] {
+    if (node.type === 'heading') {
+      const recordId = generateRecordId();
+      this.recordMap[recordId] = this.createHeadingBlock(recordId, node as Heading);
+      this.recordIds.push(recordId);
+      this.blockIds.push(this.blockIds.length + 1);
+      return [recordId];
+    }
+
+    if (node.type === 'paragraph') {
+      const recordId = generateRecordId();
+      this.recordMap[recordId] = this.createTextBlock(recordId, node as Paragraph);
+      this.recordIds.push(recordId);
+      this.blockIds.push(this.blockIds.length + 1);
+      return [recordId];
+    }
+
+    if (node.type === 'blockquote') {
+      const recordId = generateRecordId();
+      this.recordMap[recordId] = this.createQuoteBlock(recordId, node as Blockquote);
+      this.recordIds.push(recordId);
+      this.blockIds.push(this.blockIds.length + 1);
+      return [recordId];
+    }
+
+    if (node.type === 'code') {
+      const recordId = generateRecordId();
+      const codeNode = node as Code;
+      if (codeNode.lang && codeNode.lang.toLowerCase() === 'mermaid') {
+        this.recordMap[recordId] = this.createMermaidBlock(recordId, codeNode.value);
+      } else {
+        this.recordMap[recordId] = this.createCodeBlock(recordId, codeNode.value, codeNode.lang ?? undefined);
+      }
+      this.recordIds.push(recordId);
+      this.blockIds.push(this.blockIds.length + 1);
+      return [recordId];
+    }
+
+    if (node.type === 'thematicBreak') {
+      const recordId = generateRecordId();
+      this.recordMap[recordId] = this.createDividerBlock(recordId);
+      this.recordIds.push(recordId);
+      this.blockIds.push(this.blockIds.length + 1);
+      return [recordId];
+    }
+
+    if (node.type === 'math') {
+      const mathNode = node as any;
+      const recordId = generateRecordId();
+      const equation = mathNode.value ?? '';
+      this.recordMap[recordId] = this.createEquationParagraphBlock(recordId, equation);
+      this.recordIds.push(recordId);
+      this.blockIds.push(this.blockIds.length + 1);
+      return [recordId];
+    }
+
+    if (node.type === 'table') {
+      return [this.convertTable(node).tableId];
+    }
+
+    if (node.type === 'list') {
+      return this.convertList(node as List);
+    }
+
+    return [];
   }
 
   private convertList(listNode: List): string[] {

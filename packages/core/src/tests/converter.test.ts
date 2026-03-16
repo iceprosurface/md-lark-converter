@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MarkdownToLarkConverter, markdownToLark, larkToMarkdown, type ClipboardData } from '@md-lark-converter/core';
+import { MarkdownToLarkConverter, markdownToLark, larkToMarkdown, generateHtml, type ClipboardData } from '@md-lark-converter/core';
 
 describe('markdownToLarkConverter', () => {
   it('should convert heading to lark format', async () => {
@@ -75,6 +75,24 @@ describe('larkToMarkdown', () => {
     const markdown = larkToMarkdown(larkData);
 
     expect(markdown).toBe('- 项目 1\n- 项目 2\n- 项目 3');
+  });
+
+  it('should preserve top-level list order between surrounding blocks', async () => {
+    const markdown = `第一段
+
+- 项目 1
+- 项目 2
+
+第二段`;
+    const larkData = await markdownToLark(markdown);
+    const topLevelTypes = larkData.recordIds.map((id) => larkData.recordMap[id].snapshot.type);
+    const rootChildren = larkData.recordMap[larkData.rootId].snapshot.children;
+    const html = generateHtml(larkData);
+
+    expect(topLevelTypes).toEqual(['text', 'bullet', 'bullet', 'text']);
+    expect(rootChildren).toEqual(larkData.recordIds);
+    expect(html.indexOf('第一段')).toBeLessThan(html.indexOf('项目 1'));
+    expect(html.indexOf('项目 2')).toBeLessThan(html.indexOf('第二段'));
   });
 
   it('should convert lark code block back to markdown', async () => {
